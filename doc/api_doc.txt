@@ -1,0 +1,418 @@
+# Mehfilista Frontend API Integration Guide
+
+This guide provides everything the Flutter developer needs to integrate with the Mehfilista backend API. The server runs on `http://localhost:9000` (update this URL for production).
+
+## Base URL
+```
+http://localhost:9000
+```
+
+## Authentication Flow
+
+### 1. Register User/Vendor
+**Endpoint:** `POST /auth/register`  
+**Auth:** Not required  
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe",
+  "phone": "+923001234567",
+  "role": "user" // or "vendor"
+}
+```
+**Response:** JWT token + user info  
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/auth/register'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({
+    'email': email,
+    'password': password,
+    'name': name,
+    'phone': phone,
+    'role': role,
+  }),
+);
+final token = jsonDecode(response.body)['token'];
+```
+
+### 2. Login
+**Endpoint:** `POST /auth/login`  
+**Auth:** Not required  
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+**Response:** JWT token + user info  
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/auth/login'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({
+    'email': email,
+    'password': password,
+  }),
+);
+final token = jsonDecode(response.body)['token'];
+```
+
+### 3. Get Current User
+**Endpoint:** `GET /auth/me`  
+**Auth:** Required (Bearer token)  
+**Headers:** `Authorization: Bearer <token>`  
+**Response:** User details  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/auth/me'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final user = jsonDecode(response.body);
+```
+
+### 4. Reset Password
+**Endpoint:** `POST /auth/reset-password`  
+**Auth:** Not required  
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "new_password": "newpassword123"
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/auth/reset-password'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({
+    'email': email,
+    'new_password': newPassword,
+  }),
+);
+```
+
+## Homepage Integration
+
+### Get Homepage Recommendations
+**Endpoint:** `GET /home/recommendations`  
+**Auth:** Not required  
+**Response:**
+```json
+{
+  "featured_vendors": [...],
+  "popular_categories": [
+    {
+      "name": "photography",
+      "count": 15,
+      "icon": "camera"
+    }
+  ],
+  "recent_vendors": [...],
+  "statistics": {
+    "total_vendors": 50,
+    "total_reviews": 120,
+    "total_events_booked": 45
+  }
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.get(Uri.parse('$baseUrl/home/recommendations'));
+final data = jsonDecode(response.body);
+final featuredVendors = data['featured_vendors'];
+final categories = data['popular_categories'];
+final recentVendors = data['recent_vendors'];
+final stats = data['statistics'];
+```
+
+### Get All Categories
+**Endpoint:** `GET /home/categories`  
+**Auth:** Not required  
+**Response:** List of categories with counts and icons  
+**Flutter Code:**
+```dart
+final response = await http.get(Uri.parse('$baseUrl/home/categories'));
+final categories = jsonDecode(response.body);
+```
+
+### Get Popular Locations
+**Endpoint:** `GET /home/locations`  
+**Auth:** Not required  
+**Response:** List of locations with vendor counts  
+**Flutter Code:**
+```dart
+final response = await http.get(Uri.parse('$baseUrl/home/locations'));
+final locations = jsonDecode(response.body);
+```
+
+## Vendor Management
+
+### Search Vendors
+**Endpoint:** `GET /vendors/search`  
+**Auth:** Not required  
+**Query Params:** `category`, `location`, `event_type`, `min_rating`, `approved_only`  
+**Response:** List of vendors  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/vendors/search?category=photography&location=Karachi&min_rating=4'),
+);
+final vendors = jsonDecode(response.body);
+```
+
+### Get Vendor Details
+**Endpoint:** `GET /vendors/{id}`  
+**Auth:** Not required  
+**Response:** Vendor profile with rating and reviews  
+**Flutter Code:**
+```dart
+final response = await http.get(Uri.parse('$baseUrl/vendors/$vendorId'));
+final vendor = jsonDecode(response.body);
+```
+
+### Create Vendor Profile (Vendor Only)
+**Endpoint:** `POST /vendors`  
+**Auth:** Required (Vendor role)  
+**Request Body:**
+```json
+{
+  "business_name": "Royal Photography",
+  "category": ["photography", "videography"],
+  "services": "Professional photography services...",
+  "location": "Karachi",
+  "event_types": ["wedding", "engagement", "birthday"],
+  "pricing": "PKR 50,000 - 150,000",
+  "availability": "Available on weekends"
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/vendors'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'business_name': businessName,
+    'category': categories,
+    'services': services,
+    'location': location,
+    'event_types': eventTypes,
+    'pricing': pricing,
+    'availability': availability,
+  }),
+);
+```
+
+### Get My Vendor Profile (Vendor Only)
+**Endpoint:** `GET /vendors/me`  
+**Auth:** Required (Vendor role)  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/vendors/me'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final myVendor = jsonDecode(response.body);
+```
+
+### Update Vendor Profile (Vendor Only)
+**Endpoint:** `PUT /vendors/{id}`  
+**Auth:** Required (Vendor role, own profile)  
+**Request Body:** Partial update  
+**Flutter Code:**
+```dart
+final response = await http.put(
+  Uri.parse('$baseUrl/vendors/$vendorId'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'business_name': 'Updated Name',
+    'pricing': 'PKR 60,000 - 180,000',
+  }),
+);
+```
+
+### Upload Portfolio Image (Vendor Only)
+**Endpoint:** `POST /vendors/{id}/portfolio`  
+**Auth:** Required (Vendor role)  
+**Body:** Form data with image file (JPEG, PNG, WebP)  
+**Flutter Code:**
+```dart
+var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/vendors/$vendorId/portfolio'));
+request.headers['Authorization'] = 'Bearer $token';
+request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+final response = await request.send();
+```
+
+## Inquiries/Bookings
+
+### Send Inquiry (User Only)
+**Endpoint:** `POST /inquiries`  
+**Auth:** Required (User role)  
+**Request Body:**
+```json
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "event_type": "wedding",
+  "preferred_date": "2024-06-15",
+  "message": "I need photography services for my wedding"
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/inquiries'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'vendor_id': vendorId,
+    'event_type': eventType,
+    'preferred_date': date,
+    'message': message,
+  }),
+);
+```
+
+### Get My Inquiries (User Only)
+**Endpoint:** `GET /inquiries/me`  
+**Auth:** Required (User role)  
+**Response:** List of sent inquiries  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/inquiries/me'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final inquiries = jsonDecode(response.body);
+```
+
+### Get Vendor Inquiries (Vendor Only)
+**Endpoint:** `GET /inquiries/vendor/me`  
+**Auth:** Required (Vendor role)  
+**Response:** List of received inquiries  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/inquiries/vendor/me'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final inquiries = jsonDecode(response.body);
+```
+
+### Get Inquiry Details
+**Endpoint:** `GET /inquiries/{id}`  
+**Auth:** Required (User or Vendor involved)  
+**Flutter Code:**
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/inquiries/$inquiryId'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final inquiry = jsonDecode(response.body);
+```
+
+### Respond to Inquiry (Vendor Only)
+**Endpoint:** `PUT /inquiries/{id}`  
+**Auth:** Required (Vendor role)  
+**Request Body:**
+```json
+{
+  "status": "accepted", // or "declined"
+  "vendor_response": "Yes, I'm available on this date!"
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.put(
+  Uri.parse('$baseUrl/inquiries/$inquiryId'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'status': status,
+    'vendor_response': responseMessage,
+  }),
+);
+```
+
+## Reviews
+
+### Leave Review (User Only)
+**Endpoint:** `POST /reviews`  
+**Auth:** Required (User role)  
+**Request Body:**
+```json
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "rating": 5,
+  "comment": "Excellent service! Highly recommended."
+}
+```
+**Flutter Code:**
+```dart
+final response = await http.post(
+  Uri.parse('$baseUrl/reviews'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'vendor_id': vendorId,
+    'rating': rating,
+    'comment': comment,
+  }),
+);
+```
+
+### Get Vendor Reviews
+**Endpoint:** `GET /reviews/vendor/{vendor_id}`  
+**Auth:** Not required  
+**Response:** List of reviews  
+**Flutter Code:**
+```dart
+final response = await http.get(Uri.parse('$baseUrl/reviews/vendor/$vendorId'));
+final reviews = jsonDecode(response.body);
+```
+
+## Utility Endpoints
+
+### API Root
+**Endpoint:** `GET /`  
+**Auth:** Not required  
+**Response:** API info  
+
+### Health Check
+**Endpoint:** `GET /health`  
+**Auth:** Not required  
+**Response:** Health status  
+
+## Notes for Flutter Developer
+
+- Always include `Authorization: Bearer <token>` header for protected endpoints.
+- Use `http` package for requests.
+- Handle JSON encoding/decoding properly.
+- Store JWT token securely (e.g., using flutter_secure_storage).
+- Implement error handling for network requests.
+- Update base URL for production environment.
+- For file uploads, use `http.MultipartRequest`.
+- Dates should be in YYYY-MM-DD format.
+
+## Admin Endpoints (For Reference Only - Not for Frontend App)
+
+- These are for admin dashboard, not the Flutter app.
+- Include `/admin/vendors/pending`, `/admin/vendors/{id}/approve`, etc.
