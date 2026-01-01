@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = 'http://localhost:9000';
+  static const String baseUrl = 'http://20.83.180.133:9000';
 
   // Auth endpoints
   static const String register = '$baseUrl/auth/register';
