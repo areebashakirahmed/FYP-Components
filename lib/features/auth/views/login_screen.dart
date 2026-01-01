@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     } else if (mounted && authProvider.error != null) {
-      Fluttertoast.showToast(msg: authProvider.error!);
+      Fluttertoast.showToast(msg: authProvider.error ?? 'Login failed');
     }
   }
 

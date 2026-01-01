@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mehfilista/features/auth/auth_services.dart';
 import 'package:mehfilista/features/auth/model/user_model.dart';
 import 'package:mehfilista/services/user_storage.dart';
-import 'package:mehfilista/utils/constants/app_config.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthServices _authServices = AuthServices();
@@ -21,39 +20,25 @@ class AuthProvider extends ChangeNotifier {
   bool get isVendor => _user?.role == 'vendor';
   bool get isUser => _user?.role == 'user';
 
-  /// Demo mode login - creates a fake user for testing UI
-  void _setDemoUser(String role) {
-    _user = UserModel(
-      id: 'demo_${role}_001',
-      email: role == 'vendor' ? 'vendor@mehfilista.com' : 'user@mehfilista.com',
-      name: role == 'vendor' ? 'Demo Vendor' : 'Demo User',
-      phone: '+92 300 1234567',
-      role: role,
-    );
-    _token = 'demo_token_${DateTime.now().millisecondsSinceEpoch}';
-  }
-
   Future<void> loadUser() async {
     _isLoading = true;
     notifyListeners();
 
-    // In demo mode, check if we have a saved demo user
-    if (kDemoMode) {
-      _token = await _userStorage.getToken();
-      if (_token != null && _token!.startsWith('demo_token_')) {
-        _user = await _userStorage.getUser();
-      }
+    _token = await _userStorage.getToken();
+
+    // Clear any old demo tokens from previous sessions
+    if (_token != null && _token!.startsWith('demo_token_')) {
+      await logout();
       _isLoading = false;
       notifyListeners();
       return;
     }
 
-    _token = await _userStorage.getToken();
     if (_token != null) {
       try {
-        _user = await _userStorage.getUser();
-        if (_user == null) {
-          _user = await _authServices.getMe(_token!);
+        // Always validate token with API
+        _user = await _authServices.getMe(_token!);
+        if (_user != null) {
           await _userStorage.saveUser(_user!);
         }
       } catch (e) {
@@ -77,26 +62,6 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    // Demo mode - simulate successful registration
-    if (kDemoMode) {
-      await Future.delayed(
-        const Duration(milliseconds: 800),
-      ); // Simulate network
-      _user = UserModel(
-        id: 'demo_${role}_${DateTime.now().millisecondsSinceEpoch}',
-        email: email,
-        name: name,
-        phone: phone,
-        role: role,
-      );
-      _token = 'demo_token_${DateTime.now().millisecondsSinceEpoch}';
-      await _userStorage.saveToken(_token!);
-      await _userStorage.saveUser(_user!);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    }
-
     try {
       final data = await _authServices.register(
         email,
@@ -105,10 +70,18 @@ class AuthProvider extends ChangeNotifier {
         phone,
         role,
       );
-      _token = data['token'];
-      _user = UserModel.fromJson(data['user']);
+
+      // Validate response data (API returns access_token, not token)
+      if (data['access_token'] == null || data['user'] == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      _token = data['access_token'] as String;
+      _user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+
       await _userStorage.saveToken(_token!);
       await _userStorage.saveUser(_user!);
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -125,27 +98,20 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    // Demo mode - simulate successful login
-    if (kDemoMode) {
-      await Future.delayed(
-        const Duration(milliseconds: 800),
-      ); // Simulate network
-      // Determine role based on email
-      final role = email.toLowerCase().contains('vendor') ? 'vendor' : 'user';
-      _setDemoUser(role);
-      await _userStorage.saveToken(_token!);
-      await _userStorage.saveUser(_user!);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    }
-
     try {
       final data = await _authServices.login(email, password);
-      _token = data['token'];
-      _user = UserModel.fromJson(data['user']);
+
+      // Validate response data (API returns access_token, not token)
+      if (data['access_token'] == null || data['user'] == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      _token = data['access_token'] as String;
+      _user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+
       await _userStorage.saveToken(_token!);
       await _userStorage.saveUser(_user!);
+
       _isLoading = false;
       notifyListeners();
       return true;

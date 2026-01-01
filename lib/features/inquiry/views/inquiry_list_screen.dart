@@ -92,7 +92,7 @@ class _InquiryListScreenState extends State<InquiryListScreen>
                   Icon(Icons.error_outline, size: 64.sp, color: Colors.grey),
                   SizedBox(height: 16.h),
                   Text(
-                    provider.error!,
+                    provider.error ?? 'An error occurred',
                     style: TextStyle(color: Colors.grey, fontSize: 16.sp),
                     textAlign: TextAlign.center,
                   ),

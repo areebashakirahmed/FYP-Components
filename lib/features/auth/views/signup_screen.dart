@@ -65,7 +65,7 @@ class _SignupScreenState extends State<SignupScreen> {
         (route) => false,
       );
     } else if (mounted && authProvider.error != null) {
-      Fluttertoast.showToast(msg: authProvider.error!);
+      Fluttertoast.showToast(msg: authProvider.error ?? 'Registration failed');
     }
   }
 

@@ -1,17 +1,103 @@
 # Mehfilista Frontend API Integration Guide
 
-This guide provides everything the Flutter developer needs to integrate with the Mehfilista backend API. The server runs on `http://localhost:9000` (update this URL for production).
+This guide provides everything the Flutter developer needs to integrate with the Mehfilista backend API.
 
 ## Base URL
 ```
-http://localhost:9000
+http://20.83.180.133:9000
 ```
+
+---
+
+## Error Handling & Response Structure
+
+### Standard Error Response Format
+All API errors return this structure:
+```json
+{
+  "detail": "Error message here"
+}
+```
+
+### HTTP Status Codes Reference
+| Code | Meaning | User Message to Show |
+|------|---------|---------------------|
+| 200 | Success | (Handle response normally) |
+| 201 | Created | "Successfully created!" |
+| 400 | Bad Request | Show `detail` from response |
+| 401 | Unauthorized | "Please login to continue" or "Invalid credentials" |
+| 403 | Forbidden | "You don't have permission for this action" |
+| 404 | Not Found | "Resource not found" |
+| 422 | Validation Error | Parse and show field-specific errors |
+| 500 | Server Error | "Something went wrong. Please try again later" |
+
+### Validation Error Response (422)
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "email"],
+      "msg": "value is not a valid email address",
+      "type": "value_error.email"
+    }
+  ]
+}
+```
+
+### Flutter Error Handler Helper
+```dart
+String getErrorMessage(http.Response response) {
+  try {
+    final body = jsonDecode(response.body);
+
+    // Handle validation errors (422)
+    if (response.statusCode == 422 && body['detail'] is List) {
+      final errors = body['detail'] as List;
+      return errors.map((e) => '${e['loc'].last}: ${e['msg']}').join('\n');
+    }
+
+    // Handle standard errors
+    if (body['detail'] != null) {
+      return body['detail'];
+    }
+
+    return 'Something went wrong';
+  } catch (e) {
+    return 'Something went wrong';
+  }
+}
+
+// Usage in API calls
+if (response.statusCode != 200 && response.statusCode != 201) {
+  throw Exception(getErrorMessage(response));
+}
+```
+
+---
 
 ## Authentication Flow
 
 ### 1. Register User/Vendor
-**Endpoint:** `POST /auth/register`  
-**Auth:** Not required  
+**Endpoint:** `POST /auth/register`
+**Auth:** Not required
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| email | Required, valid email format | "Please enter a valid email address" |
+| password | Required, min 6 characters | "Password must be at least 6 characters" |
+| name | Required, min 2 characters | "Name must be at least 2 characters" |
+| phone | Required | "Phone number is required" |
+| role | Required, must be "user" or "vendor" | "Please select account type" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Email already registered"` | "This email is already registered. Please login or use a different email." |
+| `"value is not a valid email address"` | "Please enter a valid email address" |
+| `"ensure this value has at least 6 characters"` | "Password must be at least 6 characters" |
+| `"string does not match regex"` (role) | "Invalid account type selected" |
+
 **Request Body:**
 ```json
 {
@@ -19,29 +105,97 @@ http://localhost:9000
   "password": "password123",
   "name": "John Doe",
   "phone": "+923001234567",
-  "role": "user" // or "vendor"
+  "role": "user"
 }
 ```
-**Response:** JWT token + user info  
-**Flutter Code:**
-```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/auth/register'),
-  headers: {'Content-Type': 'application/json'},
-  body: jsonEncode({
-    'email': email,
-    'password': password,
-    'name': name,
-    'phone': phone,
-    'role': role,
-  }),
-);
-final token = jsonDecode(response.body)['token'];
+
+**Success Response (201):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "phone": "+923001234567",
+    "role": "user"
+  }
+}
 ```
 
+**Flutter Code with Validation:**
+```dart
+// Client-side validation
+String? validateRegistration(String email, String password, String name, String phone, String role) {
+  if (email.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    return 'Please enter a valid email address';
+  }
+  if (password.length < 6) {
+    return 'Password must be at least 6 characters';
+  }
+  if (name.length < 2) {
+    return 'Name must be at least 2 characters';
+  }
+  if (phone.isEmpty) {
+    return 'Phone number is required';
+  }
+  if (role != 'user' && role != 'vendor') {
+    return 'Please select account type';
+  }
+  return null; // Valid
+}
+
+// API call
+Future<Map<String, dynamic>> register(String email, String password, String name, String phone, String role) async {
+  final validationError = validateRegistration(email, password, name, phone, role);
+  if (validationError != null) {
+    throw Exception(validationError);
+  }
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/register'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'password': password,
+      'name': name,
+      'phone': phone,
+      'role': role,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 400) {
+    final body = jsonDecode(response.body);
+    if (body['detail'] == 'Email already registered') {
+      throw Exception('This email is already registered. Please login or use a different email.');
+    }
+    throw Exception(body['detail']);
+  } else {
+    throw Exception(getErrorMessage(response));
+  }
+}
+```
+
+---
+
 ### 2. Login
-**Endpoint:** `POST /auth/login`  
-**Auth:** Not required  
+**Endpoint:** `POST /auth/login`
+**Auth:** Not required
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| email | Required, valid email format | "Please enter a valid email address" |
+| password | Required | "Password is required" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Invalid email or password"` | "Invalid email or password. Please check your credentials." |
+
 **Request Body:**
 ```json
 {
@@ -49,37 +203,109 @@ final token = jsonDecode(response.body)['token'];
   "password": "password123"
 }
 ```
-**Response:** JWT token + user info  
-**Flutter Code:**
-```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/auth/login'),
-  headers: {'Content-Type': 'application/json'},
-  body: jsonEncode({
-    'email': email,
-    'password': password,
-  }),
-);
-final token = jsonDecode(response.body)['token'];
+
+**Success Response (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "phone": "+923001234567",
+    "role": "user"
+  }
+}
 ```
+
+**Flutter Code with Validation:**
+```dart
+Future<Map<String, dynamic>> login(String email, String password) async {
+  if (email.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    throw Exception('Please enter a valid email address');
+  }
+  if (password.isEmpty) {
+    throw Exception('Password is required');
+  }
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/login'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'password': password,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 401) {
+    throw Exception('Invalid email or password. Please check your credentials.');
+  } else {
+    throw Exception(getErrorMessage(response));
+  }
+}
+```
+
+---
 
 ### 3. Get Current User
-**Endpoint:** `GET /auth/me`  
-**Auth:** Required (Bearer token)  
-**Headers:** `Authorization: Bearer <token>`  
-**Response:** User details  
-**Flutter Code:**
-```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/auth/me'),
-  headers: {'Authorization': 'Bearer $token'},
-);
-final user = jsonDecode(response.body);
+**Endpoint:** `GET /auth/me`
+**Auth:** Required (Bearer token)
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Could not validate credentials"` | "Session expired. Please login again." |
+| `"Not authenticated"` | "Please login to continue" |
+
+**Success Response (200):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "phone": "+923001234567",
+  "role": "user"
+}
 ```
 
+**Flutter Code:**
+```dart
+Future<Map<String, dynamic>> getCurrentUser(String token) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/auth/me'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 401) {
+    throw Exception('Session expired. Please login again.');
+  } else {
+    throw Exception(getErrorMessage(response));
+  }
+}
+```
+
+---
+
 ### 4. Reset Password
-**Endpoint:** `POST /auth/reset-password`  
-**Auth:** Not required  
+**Endpoint:** `POST /auth/reset-password`
+**Auth:** Not required
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| email | Required, valid email format | "Please enter a valid email address" |
+| new_password | Required, min 6 characters | "Password must be at least 6 characters" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"User not found"` | "No account found with this email address." |
+
 **Request Body:**
 ```json
 {
@@ -87,23 +313,50 @@ final user = jsonDecode(response.body);
   "new_password": "newpassword123"
 }
 ```
-**Flutter Code:**
-```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/auth/reset-password'),
-  headers: {'Content-Type': 'application/json'},
-  body: jsonEncode({
-    'email': email,
-    'new_password': newPassword,
-  }),
-);
+
+**Success Response (200):**
+```json
+{
+  "message": "Password reset successfully"
+}
 ```
+
+**Flutter Code with Validation:**
+```dart
+Future<void> resetPassword(String email, String newPassword) async {
+  if (email.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    throw Exception('Please enter a valid email address');
+  }
+  if (newPassword.length < 6) {
+    throw Exception('Password must be at least 6 characters');
+  }
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/reset-password'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'new_password': newPassword,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    return; // Success
+  } else if (response.statusCode == 404) {
+    throw Exception('No account found with this email address.');
+  } else {
+    throw Exception(getErrorMessage(response));
+  }
+}
+```
+
+---
 
 ## Homepage Integration
 
 ### Get Homepage Recommendations
-**Endpoint:** `GET /home/recommendations`  
-**Auth:** Not required  
+**Endpoint:** `GET /home/recommendations`
+**Auth:** Not required
 **Response:**
 ```json
 {
@@ -126,17 +379,19 @@ final response = await http.post(
 **Flutter Code:**
 ```dart
 final response = await http.get(Uri.parse('$baseUrl/home/recommendations'));
-final data = jsonDecode(response.body);
-final featuredVendors = data['featured_vendors'];
-final categories = data['popular_categories'];
-final recentVendors = data['recent_vendors'];
-final stats = data['statistics'];
+if (response.statusCode == 200) {
+  final data = jsonDecode(response.body);
+  final featuredVendors = data['featured_vendors'];
+  final categories = data['popular_categories'];
+  final recentVendors = data['recent_vendors'];
+  final stats = data['statistics'];
+}
 ```
 
 ### Get All Categories
-**Endpoint:** `GET /home/categories`  
-**Auth:** Not required  
-**Response:** List of categories with counts and icons  
+**Endpoint:** `GET /home/categories`
+**Auth:** Not required
+**Response:** List of categories with counts and icons
 **Flutter Code:**
 ```dart
 final response = await http.get(Uri.parse('$baseUrl/home/categories'));
@@ -144,123 +399,322 @@ final categories = jsonDecode(response.body);
 ```
 
 ### Get Popular Locations
-**Endpoint:** `GET /home/locations`  
-**Auth:** Not required  
-**Response:** List of locations with vendor counts  
+**Endpoint:** `GET /home/locations`
+**Auth:** Not required
+**Response:** List of locations with vendor counts
 **Flutter Code:**
 ```dart
 final response = await http.get(Uri.parse('$baseUrl/home/locations'));
 final locations = jsonDecode(response.body);
 ```
 
+---
+
 ## Vendor Management
 
 ### Search Vendors
-**Endpoint:** `GET /vendors/search`  
-**Auth:** Not required  
-**Query Params:** `category`, `location`, `event_type`, `min_rating`, `approved_only`  
-**Response:** List of vendors  
+**Endpoint:** `GET /vendors/search`
+**Auth:** Not required
+**Query Params:** `category`, `location`, `event_type`, `min_rating` (1-5), `approved_only` (boolean)
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| min_rating | Optional, 1-5 | "Rating must be between 1 and 5" |
+
 **Flutter Code:**
 ```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/vendors/search?category=photography&location=Karachi&min_rating=4'),
-);
-final vendors = jsonDecode(response.body);
+Future<List<dynamic>> searchVendors({
+  String? category,
+  String? location,
+  String? eventType,
+  double? minRating,
+}) async {
+  if (minRating != null && (minRating < 1 || minRating > 5)) {
+    throw Exception('Rating must be between 1 and 5');
+  }
+
+  final queryParams = <String, String>{};
+  if (category != null) queryParams['category'] = category;
+  if (location != null) queryParams['location'] = location;
+  if (eventType != null) queryParams['event_type'] = eventType;
+  if (minRating != null) queryParams['min_rating'] = minRating.toString();
+
+  final uri = Uri.parse('$baseUrl/vendors/search').replace(queryParameters: queryParams);
+  final response = await http.get(uri);
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Get Vendor Details
-**Endpoint:** `GET /vendors/{id}`  
-**Auth:** Not required  
-**Response:** Vendor profile with rating and reviews  
+**Endpoint:** `GET /vendors/{id}`
+**Auth:** Not required
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Vendor not found"` | "Vendor not found" |
+| `"Invalid vendor ID"` | "Invalid vendor ID" |
+
 **Flutter Code:**
 ```dart
-final response = await http.get(Uri.parse('$baseUrl/vendors/$vendorId'));
-final vendor = jsonDecode(response.body);
+Future<Map<String, dynamic>> getVendorDetails(String vendorId) async {
+  final response = await http.get(Uri.parse('$baseUrl/vendors/$vendorId'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 404) {
+    throw Exception('Vendor not found');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
 
+---
+
 ### Create Vendor Profile (Vendor Only)
-**Endpoint:** `POST /vendors`  
-**Auth:** Required (Vendor role)  
+**Endpoint:** `POST /vendors`
+**Auth:** Required (Vendor role)
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| business_name | Required, min 2 characters | "Business name must be at least 2 characters" |
+| category | Required, at least 1 item | "Please select at least one category" |
+| services | Required, min 10 characters | "Services description must be at least 10 characters" |
+| location | Required | "Location is required" |
+| event_types | Required, at least 1 item | "Please select at least one event type" |
+| pricing | Required | "Pricing information is required" |
+| availability | Required | "Availability information is required" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Only vendors can create vendor profiles"` | "Only vendor accounts can create business profiles" |
+| `"Vendor profile already exists"` | "You already have a vendor profile" |
+
 **Request Body:**
 ```json
 {
   "business_name": "Royal Photography",
   "category": ["photography", "videography"],
-  "services": "Professional photography services...",
+  "services": "Professional photography and videography services for all events",
   "location": "Karachi",
   "event_types": ["wedding", "engagement", "birthday"],
   "pricing": "PKR 50,000 - 150,000",
   "availability": "Available on weekends"
 }
 ```
-**Flutter Code:**
+
+**Flutter Code with Validation:**
 ```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/vendors'),
-  headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
-  body: jsonEncode({
-    'business_name': businessName,
-    'category': categories,
-    'services': services,
-    'location': location,
-    'event_types': eventTypes,
-    'pricing': pricing,
-    'availability': availability,
-  }),
-);
+String? validateVendorProfile(
+  String businessName,
+  List<String> category,
+  String services,
+  String location,
+  List<String> eventTypes,
+  String pricing,
+  String availability,
+) {
+  if (businessName.length < 2) return 'Business name must be at least 2 characters';
+  if (category.isEmpty) return 'Please select at least one category';
+  if (services.length < 10) return 'Services description must be at least 10 characters';
+  if (location.isEmpty) return 'Location is required';
+  if (eventTypes.isEmpty) return 'Please select at least one event type';
+  if (pricing.isEmpty) return 'Pricing information is required';
+  if (availability.isEmpty) return 'Availability information is required';
+  return null;
+}
+
+Future<Map<String, dynamic>> createVendorProfile(
+  String token,
+  String businessName,
+  List<String> category,
+  String services,
+  String location,
+  List<String> eventTypes,
+  String pricing,
+  String availability,
+) async {
+  final validationError = validateVendorProfile(
+    businessName, category, services, location, eventTypes, pricing, availability,
+  );
+  if (validationError != null) throw Exception(validationError);
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/vendors'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'business_name': businessName,
+      'category': category,
+      'services': services,
+      'location': location,
+      'event_types': eventTypes,
+      'pricing': pricing,
+      'availability': availability,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 403) {
+    throw Exception('Only vendor accounts can create business profiles');
+  } else if (response.statusCode == 400) {
+    final body = jsonDecode(response.body);
+    if (body['detail']?.contains('already exists') == true) {
+      throw Exception('You already have a vendor profile');
+    }
+    throw Exception(body['detail']);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Get My Vendor Profile (Vendor Only)
-**Endpoint:** `GET /vendors/me`  
-**Auth:** Required (Vendor role)  
+**Endpoint:** `GET /vendors/me`
+**Auth:** Required (Vendor role)
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Vendor profile not found"` | "Please create your vendor profile first" |
+
 **Flutter Code:**
 ```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/vendors/me'),
-  headers: {'Authorization': 'Bearer $token'},
-);
-final myVendor = jsonDecode(response.body);
+Future<Map<String, dynamic>> getMyVendorProfile(String token) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/vendors/me'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 404) {
+    throw Exception('Please create your vendor profile first');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Update Vendor Profile (Vendor Only)
-**Endpoint:** `PUT /vendors/{id}`  
-**Auth:** Required (Vendor role, own profile)  
-**Request Body:** Partial update  
+**Endpoint:** `PUT /vendors/{id}`
+**Auth:** Required (Vendor role, own profile)
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Not authorized to update this vendor"` | "You can only update your own profile" |
+| `"Vendor not found"` | "Vendor profile not found" |
+
 **Flutter Code:**
 ```dart
-final response = await http.put(
-  Uri.parse('$baseUrl/vendors/$vendorId'),
-  headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
-  body: jsonEncode({
-    'business_name': 'Updated Name',
-    'pricing': 'PKR 60,000 - 180,000',
-  }),
-);
+Future<Map<String, dynamic>> updateVendorProfile(
+  String token,
+  String vendorId,
+  Map<String, dynamic> updates,
+) async {
+  final response = await http.put(
+    Uri.parse('$baseUrl/vendors/$vendorId'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode(updates),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 403) {
+    throw Exception('You can only update your own profile');
+  } else if (response.statusCode == 404) {
+    throw Exception('Vendor profile not found');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
 
+---
+
 ### Upload Portfolio Image (Vendor Only)
-**Endpoint:** `POST /vendors/{id}/portfolio`  
-**Auth:** Required (Vendor role)  
-**Body:** Form data with image file (JPEG, PNG, WebP)  
+**Endpoint:** `POST /vendors/{id}/portfolio`
+**Auth:** Required (Vendor role)
+**Body:** Form data with image file
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| image | Required, JPEG/PNG/WebP only | "Please select a valid image file (JPEG, PNG, or WebP)" |
+| image | Max 5MB | "Image size must be less than 5MB" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Invalid image format"` | "Please upload a valid image (JPEG, PNG, or WebP)" |
+| `"Not authorized"` | "You can only upload to your own portfolio" |
+
 **Flutter Code:**
 ```dart
-var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/vendors/$vendorId/portfolio'));
-request.headers['Authorization'] = 'Bearer $token';
-request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-final response = await request.send();
+Future<void> uploadPortfolioImage(String token, String vendorId, String imagePath) async {
+  // Validate file extension
+  final extension = imagePath.split('.').last.toLowerCase();
+  if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
+    throw Exception('Please select a valid image file (JPEG, PNG, or WebP)');
+  }
+
+  var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/vendors/$vendorId/portfolio'));
+  request.headers['Authorization'] = 'Bearer $token';
+  request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+  final streamedResponse = await request.send();
+  final response = await http.Response.fromStream(streamedResponse);
+
+  if (response.statusCode == 200) {
+    return; // Success
+  } else if (response.statusCode == 403) {
+    throw Exception('You can only upload to your own portfolio');
+  } else if (response.statusCode == 400) {
+    throw Exception('Please upload a valid image (JPEG, PNG, or WebP)');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ## Inquiries/Bookings
 
 ### Send Inquiry (User Only)
-**Endpoint:** `POST /inquiries`  
-**Auth:** Required (User role)  
+**Endpoint:** `POST /inquiries`
+**Auth:** Required (User role)
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| vendor_id | Required | "Please select a vendor" |
+| event_type | Required | "Please select an event type" |
+| preferred_date | Required, YYYY-MM-DD format | "Please select a valid date" |
+| message | Required, min 10 characters | "Message must be at least 10 characters" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Only users can send inquiries"` | "Only user accounts can send inquiries" |
+| `"Vendor not found"` | "Selected vendor not found" |
+
 **Request Body:**
 ```json
 {
@@ -270,91 +724,207 @@ final response = await request.send();
   "message": "I need photography services for my wedding"
 }
 ```
-**Flutter Code:**
+
+**Flutter Code with Validation:**
 ```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/inquiries'),
-  headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
-  body: jsonEncode({
-    'vendor_id': vendorId,
-    'event_type': eventType,
-    'preferred_date': date,
-    'message': message,
-  }),
-);
+Future<Map<String, dynamic>> sendInquiry(
+  String token,
+  String vendorId,
+  String eventType,
+  DateTime preferredDate,
+  String message,
+) async {
+  if (vendorId.isEmpty) throw Exception('Please select a vendor');
+  if (eventType.isEmpty) throw Exception('Please select an event type');
+  if (message.length < 10) throw Exception('Message must be at least 10 characters');
+
+  final dateStr = '${preferredDate.year}-${preferredDate.month.toString().padLeft(2, '0')}-${preferredDate.day.toString().padLeft(2, '0')}';
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/inquiries'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'vendor_id': vendorId,
+      'event_type': eventType,
+      'preferred_date': dateStr,
+      'message': message,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 403) {
+    throw Exception('Only user accounts can send inquiries');
+  } else if (response.statusCode == 404) {
+    throw Exception('Selected vendor not found');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Get My Inquiries (User Only)
-**Endpoint:** `GET /inquiries/me`  
-**Auth:** Required (User role)  
-**Response:** List of sent inquiries  
+**Endpoint:** `GET /inquiries/me`
+**Auth:** Required (User role)
+
 **Flutter Code:**
 ```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/inquiries/me'),
-  headers: {'Authorization': 'Bearer $token'},
-);
-final inquiries = jsonDecode(response.body);
+Future<List<dynamic>> getMyInquiries(String token) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/inquiries/me'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Get Vendor Inquiries (Vendor Only)
-**Endpoint:** `GET /inquiries/vendor/me`  
-**Auth:** Required (Vendor role)  
-**Response:** List of received inquiries  
+**Endpoint:** `GET /inquiries/vendor/me`
+**Auth:** Required (Vendor role)
+
 **Flutter Code:**
 ```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/inquiries/vendor/me'),
-  headers: {'Authorization': 'Bearer $token'},
-);
-final inquiries = jsonDecode(response.body);
+Future<List<dynamic>> getVendorInquiries(String token) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/inquiries/vendor/me'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ### Get Inquiry Details
-**Endpoint:** `GET /inquiries/{id}`  
-**Auth:** Required (User or Vendor involved)  
+**Endpoint:** `GET /inquiries/{id}`
+**Auth:** Required (User or Vendor involved)
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Inquiry not found"` | "Inquiry not found" |
+| `"Not authorized"` | "You don't have permission to view this inquiry" |
+
 **Flutter Code:**
 ```dart
-final response = await http.get(
-  Uri.parse('$baseUrl/inquiries/$inquiryId'),
-  headers: {'Authorization': 'Bearer $token'},
-);
-final inquiry = jsonDecode(response.body);
+Future<Map<String, dynamic>> getInquiryDetails(String token, String inquiryId) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/inquiries/$inquiryId'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 404) {
+    throw Exception('Inquiry not found');
+  } else if (response.statusCode == 403) {
+    throw Exception('You don\'t have permission to view this inquiry');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
 
+---
+
 ### Respond to Inquiry (Vendor Only)
-**Endpoint:** `PUT /inquiries/{id}`  
-**Auth:** Required (Vendor role)  
+**Endpoint:** `PUT /inquiries/{id}`
+**Auth:** Required (Vendor role)
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| status | Required, "accepted" or "declined" | "Please select a response status" |
+| vendor_response | Required, min 5 characters | "Response message must be at least 5 characters" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Only vendors can respond to inquiries"` | "Only vendor accounts can respond to inquiries" |
+| `"Not authorized to respond to this inquiry"` | "You can only respond to inquiries sent to you" |
+| `"Inquiry not found"` | "Inquiry not found" |
+
 **Request Body:**
 ```json
 {
-  "status": "accepted", // or "declined"
+  "status": "accepted",
   "vendor_response": "Yes, I'm available on this date!"
 }
 ```
-**Flutter Code:**
+
+**Flutter Code with Validation:**
 ```dart
-final response = await http.put(
-  Uri.parse('$baseUrl/inquiries/$inquiryId'),
-  headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
-  body: jsonEncode({
-    'status': status,
-    'vendor_response': responseMessage,
-  }),
-);
+Future<Map<String, dynamic>> respondToInquiry(
+  String token,
+  String inquiryId,
+  String status,
+  String responseMessage,
+) async {
+  if (status != 'accepted' && status != 'declined') {
+    throw Exception('Please select a response status');
+  }
+  if (responseMessage.length < 5) {
+    throw Exception('Response message must be at least 5 characters');
+  }
+
+  final response = await http.put(
+    Uri.parse('$baseUrl/inquiries/$inquiryId'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'status': status,
+      'vendor_response': responseMessage,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 403) {
+    throw Exception('You can only respond to inquiries sent to you');
+  } else if (response.statusCode == 404) {
+    throw Exception('Inquiry not found');
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ## Reviews
 
 ### Leave Review (User Only)
-**Endpoint:** `POST /reviews`  
-**Auth:** Required (User role)  
+**Endpoint:** `POST /reviews`
+**Auth:** Required (User role)
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| vendor_id | Required | "Please select a vendor" |
+| rating | Required, integer 1-5 | "Rating must be between 1 and 5" |
+| comment | Required, min 10 characters | "Review must be at least 10 characters" |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"Only users can leave reviews"` | "Only user accounts can leave reviews" |
+| `"Vendor not found"` | "Vendor not found" |
+| `"You have already reviewed this vendor"` | "You have already reviewed this vendor" |
+
 **Request Body:**
 ```json
 {
@@ -363,43 +933,117 @@ final response = await http.put(
   "comment": "Excellent service! Highly recommended."
 }
 ```
-**Flutter Code:**
+
+**Flutter Code with Validation:**
 ```dart
-final response = await http.post(
-  Uri.parse('$baseUrl/reviews'),
-  headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
-  body: jsonEncode({
-    'vendor_id': vendorId,
-    'rating': rating,
-    'comment': comment,
-  }),
-);
+Future<Map<String, dynamic>> leaveReview(
+  String token,
+  String vendorId,
+  int rating,
+  String comment,
+) async {
+  if (vendorId.isEmpty) throw Exception('Please select a vendor');
+  if (rating < 1 || rating > 5) throw Exception('Rating must be between 1 and 5');
+  if (comment.length < 10) throw Exception('Review must be at least 10 characters');
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/reviews'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'vendor_id': vendorId,
+      'rating': rating,
+      'comment': comment,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 403) {
+    throw Exception('Only user accounts can leave reviews');
+  } else if (response.statusCode == 404) {
+    throw Exception('Vendor not found');
+  } else if (response.statusCode == 400) {
+    final body = jsonDecode(response.body);
+    if (body['detail']?.contains('already') == true) {
+      throw Exception('You have already reviewed this vendor');
+    }
+    throw Exception(body['detail']);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
 
+---
+
 ### Get Vendor Reviews
-**Endpoint:** `GET /reviews/vendor/{vendor_id}`  
-**Auth:** Not required  
-**Response:** List of reviews  
+**Endpoint:** `GET /reviews/vendor/{vendor_id}`
+**Auth:** Not required
+
 **Flutter Code:**
 ```dart
-final response = await http.get(Uri.parse('$baseUrl/reviews/vendor/$vendorId'));
-final reviews = jsonDecode(response.body);
+Future<List<dynamic>> getVendorReviews(String vendorId) async {
+  final response = await http.get(Uri.parse('$baseUrl/reviews/vendor/$vendorId'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  }
+  throw Exception(getErrorMessage(response));
+}
 ```
+
+---
 
 ## Utility Endpoints
 
 ### API Root
-**Endpoint:** `GET /`  
-**Auth:** Not required  
-**Response:** API info  
+**Endpoint:** `GET /`
+**Auth:** Not required
+**Response:** API info
 
 ### Health Check
-**Endpoint:** `GET /health`  
-**Auth:** Not required  
-**Response:** Health status  
+**Endpoint:** `GET /health`
+**Auth:** Not required
+**Response:** Health status
+
+---
+
+## Summary: Validation Rules Quick Reference
+
+### Registration
+- Email: Valid format (e.g., user@example.com)
+- Password: Minimum 6 characters
+- Name: Minimum 2 characters
+- Phone: Required (any format)
+- Role: Must be "user" or "vendor"
+
+### Vendor Profile
+- Business Name: Minimum 2 characters
+- Category: At least 1 selection
+- Services: Minimum 10 characters
+- Location: Required
+- Event Types: At least 1 selection
+- Pricing: Required
+- Availability: Required
+
+### Inquiry
+- Vendor ID: Required (valid MongoDB ObjectId)
+- Event Type: Required
+- Preferred Date: Required (YYYY-MM-DD format)
+- Message: Minimum 10 characters
+
+### Inquiry Response (Vendor)
+- Status: Must be "accepted" or "declined"
+- Vendor Response: Minimum 5 characters
+
+### Review
+- Vendor ID: Required (valid MongoDB ObjectId)
+- Rating: Integer 1-5
+- Comment: Minimum 10 characters
+
+---
 
 ## Notes for Flutter Developer
 
@@ -407,10 +1051,13 @@ final reviews = jsonDecode(response.body);
 - Use `http` package for requests.
 - Handle JSON encoding/decoding properly.
 - Store JWT token securely (e.g., using flutter_secure_storage).
-- Implement error handling for network requests.
-- Update base URL for production environment.
-- For file uploads, use `http.MultipartRequest`.
+- Always validate on client-side BEFORE making API calls.
+- Show user-friendly error messages as per this guide.
 - Dates should be in YYYY-MM-DD format.
+- For file uploads, use `http.MultipartRequest`.
+- Token expires after 7 days (10080 minutes).
+
+---
 
 ## Admin Endpoints (For Reference Only - Not for Frontend App)
 

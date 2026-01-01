@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: homeProvider.isLoading
           ? Center(child: CircularProgressIndicator())
           : homeProvider.hasError
-          ? _buildErrorWidget(homeProvider.error!)
+          ? _buildErrorWidget(homeProvider.error ?? 'Unknown error occurred')
           : RefreshIndicator(
               onRefresh: () => homeProvider.loadRecommendations(),
               child: SingleChildScrollView(

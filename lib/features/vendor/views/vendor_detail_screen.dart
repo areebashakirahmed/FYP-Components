@@ -150,7 +150,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                               }
 
                               final success = await inquiryProvider.sendInquiry(
-                                token: authProvider.token!,
+                                token: authProvider.token ?? '',
                                 vendorId: widget.vendorId,
                                 eventType: eventTypeController.text,
                                 preferredDate: dateController.text,
@@ -164,7 +164,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                 );
                               } else if (inquiryProvider.error != null) {
                                 Fluttertoast.showToast(
-                                  msg: inquiryProvider.error!,
+                                  msg: inquiryProvider.error ?? 'Failed to send inquiry',
                                 );
                               }
                             },
@@ -302,7 +302,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
 
                                   final success = await reviewProvider
                                       .leaveReview(
-                                        token: authProvider.token!,
+                                        token: authProvider.token ?? '',
                                         vendorId: widget.vendorId,
                                         rating: selectedRating,
                                         comment: commentController.text,
@@ -315,7 +315,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                     );
                                   } else if (reviewProvider.error != null) {
                                     Fluttertoast.showToast(
-                                      msg: reviewProvider.error!,
+                                      msg: reviewProvider.error ?? 'Failed to submit review',
                                     );
                                   }
                                 },

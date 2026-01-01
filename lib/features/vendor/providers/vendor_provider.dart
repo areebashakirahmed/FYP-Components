@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mehfilista/features/vendor/models/vendor_model.dart';
 import 'package:mehfilista/features/vendor/services/vendor_service.dart';
-import 'package:mehfilista/utils/constants/app_config.dart';
 
 class VendorProvider extends ChangeNotifier {
   final VendorService _vendorService = VendorService();
@@ -18,113 +17,6 @@ class VendorProvider extends ChangeNotifier {
   String? _locationFilter;
   String? _eventTypeFilter;
   double? _minRatingFilter;
-
-  // Demo vendors
-  static final List<VendorModel> _demoVendors = [
-    VendorModel(
-      id: 'v1',
-      userId: 'u1',
-      businessName: 'Royal Photography',
-      category: ['Photography'],
-      services: 'Wedding photography, Pre-wedding shoots, Event coverage',
-      location: 'Lahore',
-      eventTypes: ['Wedding', 'Birthday', 'Corporate'],
-      pricing: 'Starting from PKR 50,000',
-      availability: 'Weekends available',
-      averageRating: 4.8,
-      totalReviews: 156,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
-        'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-      ],
-      isApproved: true,
-    ),
-    VendorModel(
-      id: 'v2',
-      userId: 'u2',
-      businessName: 'Elegant Catering',
-      category: ['Catering'],
-      services: 'Full catering service, Menu planning, Staff provided',
-      location: 'Karachi',
-      eventTypes: ['Wedding', 'Corporate', 'Anniversary'],
-      pricing: 'PKR 800 per head',
-      availability: 'All days',
-      averageRating: 4.6,
-      totalReviews: 89,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
-      ],
-      isApproved: true,
-    ),
-    VendorModel(
-      id: 'v3',
-      userId: 'u3',
-      businessName: 'Dream Decorators',
-      category: ['Decoration'],
-      services: 'Stage decoration, Floral arrangements, Lighting',
-      location: 'Islamabad',
-      eventTypes: ['Wedding', 'Engagement', 'Birthday'],
-      pricing: 'Starting from PKR 100,000',
-      availability: 'By appointment',
-      averageRating: 4.9,
-      totalReviews: 203,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400',
-      ],
-      isApproved: true,
-    ),
-    VendorModel(
-      id: 'v4',
-      userId: 'u4',
-      businessName: 'Grand Venues',
-      category: ['Venues'],
-      services: 'Indoor and outdoor venues, Full facility',
-      location: 'Lahore',
-      eventTypes: ['Wedding', 'Corporate', 'Birthday'],
-      pricing: 'Starting from PKR 200,000',
-      availability: 'Check availability',
-      averageRating: 4.7,
-      totalReviews: 312,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400',
-      ],
-      isApproved: true,
-    ),
-    VendorModel(
-      id: 'v5',
-      userId: 'u5',
-      businessName: 'Melody Makers',
-      category: ['Entertainment'],
-      services: 'Live band, DJ services, Sound system rental',
-      location: 'Lahore',
-      eventTypes: ['Wedding', 'Birthday', 'Corporate'],
-      pricing: 'Starting from PKR 75,000',
-      availability: 'All days',
-      averageRating: 4.5,
-      totalReviews: 67,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-      ],
-      isApproved: true,
-    ),
-    VendorModel(
-      id: 'v6',
-      userId: 'u6',
-      businessName: 'Glamour Studio',
-      category: ['Makeup'],
-      services: 'Bridal makeup, Party makeup, Hair styling',
-      location: 'Karachi',
-      eventTypes: ['Wedding', 'Engagement', 'Birthday'],
-      pricing: 'Starting from PKR 25,000',
-      availability: 'By appointment',
-      averageRating: 4.9,
-      totalReviews: 245,
-      portfolioImages: [
-        'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-      ],
-      isApproved: true,
-    ),
-  ];
 
   // Getters
   List<VendorModel> get vendors => _vendors;
@@ -160,28 +52,6 @@ class VendorProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _vendors = _demoVendors.where((vendor) {
-        if (category != null && !vendor.category.contains(category)) {
-          return false;
-        }
-        if (location != null && vendor.location != location) {
-          return false;
-        }
-        if (eventType != null && !vendor.eventTypes.contains(eventType)) {
-          return false;
-        }
-        if (minRating != null && vendor.averageRating < minRating) {
-          return false;
-        }
-        return true;
-      }).toList();
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
-
     final result = await _vendorService.searchVendors(
       category: category,
       location: location,
@@ -209,17 +79,6 @@ class VendorProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      _selectedVendor = _demoVendors.firstWhere(
-        (v) => v.id == vendorId,
-        orElse: () => _demoVendors.first,
-      );
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
 
     final result = await _vendorService.getVendorDetails(vendorId);
 
@@ -251,28 +110,6 @@ class VendorProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _myVendorProfile = VendorModel(
-        id: 'demo_vendor',
-        userId: 'demo_user',
-        businessName: businessName,
-        category: category,
-        services: services,
-        location: location,
-        eventTypes: eventTypes,
-        pricing: pricing,
-        availability: availability,
-        averageRating: 0.0,
-        totalReviews: 0,
-        portfolioImages: [],
-        isApproved: false,
-      );
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    }
 
     final result = await _vendorService.createVendor(
       token: token,
@@ -309,31 +146,6 @@ class VendorProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      _myVendorProfile = VendorModel(
-        id: 'demo_vendor',
-        userId: 'demo_user',
-        businessName: 'My Demo Business',
-        category: ['Photography', 'Decoration'],
-        services: 'Wedding photography, Event decoration, Lighting setup',
-        location: 'Lahore',
-        eventTypes: ['Wedding', 'Birthday', 'Corporate'],
-        pricing: 'Starting from PKR 50,000',
-        availability: 'All days except Monday',
-        averageRating: 4.7,
-        totalReviews: 45,
-        portfolioImages: [
-          'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
-          'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-        ],
-        isApproved: true,
-      );
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
-
     final result = await _vendorService.getMyVendorProfile(token);
 
     result.when(
@@ -365,30 +177,6 @@ class VendorProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (_myVendorProfile != null) {
-        _myVendorProfile = VendorModel(
-          id: _myVendorProfile!.id,
-          userId: _myVendorProfile!.userId,
-          businessName: businessName ?? _myVendorProfile!.businessName,
-          category: category ?? _myVendorProfile!.category,
-          services: services ?? _myVendorProfile!.services,
-          location: location ?? _myVendorProfile!.location,
-          eventTypes: eventTypes ?? _myVendorProfile!.eventTypes,
-          pricing: pricing ?? _myVendorProfile!.pricing,
-          availability: availability ?? _myVendorProfile!.availability,
-          averageRating: _myVendorProfile!.averageRating,
-          totalReviews: _myVendorProfile!.totalReviews,
-          portfolioImages: _myVendorProfile!.portfolioImages,
-          isApproved: _myVendorProfile!.isApproved,
-        );
-      }
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    }
 
     final result = await _vendorService.updateVendor(
       token: token,
@@ -429,31 +217,6 @@ class VendorProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (_myVendorProfile != null) {
-        final updatedImages = [..._myVendorProfile!.portfolioImages, imagePath];
-        _myVendorProfile = VendorModel(
-          id: _myVendorProfile!.id,
-          userId: _myVendorProfile!.userId,
-          businessName: _myVendorProfile!.businessName,
-          category: _myVendorProfile!.category,
-          services: _myVendorProfile!.services,
-          location: _myVendorProfile!.location,
-          eventTypes: _myVendorProfile!.eventTypes,
-          pricing: _myVendorProfile!.pricing,
-          availability: _myVendorProfile!.availability,
-          averageRating: _myVendorProfile!.averageRating,
-          totalReviews: _myVendorProfile!.totalReviews,
-          portfolioImages: updatedImages,
-          isApproved: _myVendorProfile!.isApproved,
-        );
-      }
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    }
 
     final result = await _vendorService.uploadPortfolioImage(
       token: token,
