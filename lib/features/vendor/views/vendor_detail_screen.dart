@@ -293,9 +293,16 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           onPressed: reviewProvider.isLoading
                               ? null
                               : () async {
-                                  if (commentController.text.isEmpty) {
+                                  final comment = commentController.text.trim();
+                                  if (comment.isEmpty) {
                                     Fluttertoast.showToast(
                                       msg: 'Please add a comment',
+                                    );
+                                    return;
+                                  }
+                                  if (comment.length < 10) {
+                                    Fluttertoast.showToast(
+                                      msg: 'Comment must be at least 10 characters',
                                     );
                                     return;
                                   }
@@ -305,7 +312,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                         token: authProvider.token ?? '',
                                         vendorId: widget.vendorId,
                                         rating: selectedRating,
-                                        comment: commentController.text,
+                                        comment: comment,
                                       );
 
                                   if (success && context.mounted) {

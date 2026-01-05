@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/auth/views/forgotpw_screen.dart';
-import 'package:mehfilista/features/auth/views/signup_screen.dart';
 import 'package:mehfilista/features/main_shell.dart';
+import 'package:mehfilista/features/profile/role_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => SignupScreen()),
+                          MaterialPageRoute(builder: (_) => const RoleScreen()),
                         );
                       },
                       child: Text(

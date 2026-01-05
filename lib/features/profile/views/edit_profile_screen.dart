@@ -164,12 +164,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Implement actual profile update API call
-    await Future.delayed(const Duration(seconds: 1)); // Simulated delay
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.updateProfile(
+      _nameController.text.trim(),
+      _phoneController.text.trim(),
+    );
+
+    if (!mounted) return;
 
     setState(() => _isLoading = false);
 
-    Fluttertoast.showToast(msg: 'Profile updated successfully');
-    Navigator.pop(context);
+    if (success) {
+      Fluttertoast.showToast(msg: 'Profile updated successfully');
+      Navigator.pop(context);
+    } else {
+      Fluttertoast.showToast(
+        msg: authProvider.error ?? 'Failed to update profile',
+        backgroundColor: Colors.red,
+      );
+    }
   }
 }

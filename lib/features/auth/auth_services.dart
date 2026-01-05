@@ -95,6 +95,29 @@ class AuthServices {
     }
   }
 
+  Future<UserModel> updateProfile(String token, String name, String phone) async {
+    final response = await http.put(
+      Uri.parse(ApiConstants.updateProfile),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'phone': phone,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return UserModel.fromJson(data);
+    } else if (response.statusCode == 401) {
+      throw Exception('Session expired. Please login again.');
+    } else {
+      throw Exception(_getErrorMessage(response));
+    }
+  }
+
   Future<void> resetPassword(String email, String newPassword) async {
     final response = await http.post(
       Uri.parse(ApiConstants.resetPassword),

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mehfilista/components/custom_button.dart';
-import 'package:mehfilista/features/auth/views/identification_screen.dart';
 import 'package:mehfilista/features/auth/views/new_pass_screen.dart';
-import 'package:mehfilista/features/auth/views/signup_screen.dart';
+import 'package:mehfilista/features/profile/role_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/utils/helpers/localization_extension.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -77,7 +76,7 @@ class VerifyEmailScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => SignupScreen()),
+                    MaterialPageRoute(builder: (_) => const RoleScreen()),
                   );
                 },
                 child: Text(

@@ -131,6 +131,33 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> updateProfile(String name, String phone) async {
+    if (_token == null) {
+      _error = 'Not authenticated';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _authServices.updateProfile(_token!, name, phone);
+      _user = updatedUser;
+      await _userStorage.saveUser(_user!);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> resetPassword(String email, String newPassword) async {
     _isLoading = true;
     _error = null;
