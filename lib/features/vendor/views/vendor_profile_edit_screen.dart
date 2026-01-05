@@ -23,6 +23,9 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
   final _locationController = TextEditingController();
   final _pricingController = TextEditingController();
   final _availabilityController = TextEditingController();
+  final _contactPhoneController = TextEditingController();
+  final _contactEmailController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   List<String> _selectedCategories = [];
   List<String> _selectedEventTypes = [];
@@ -65,6 +68,9 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
       _locationController.text = vendor.location;
       _pricingController.text = vendor.pricing;
       _availabilityController.text = vendor.availability;
+      _contactPhoneController.text = vendor.contactPhone ?? '';
+      _contactEmailController.text = vendor.contactEmail ?? '';
+      _descriptionController.text = vendor.description ?? '';
       _selectedCategories = List.from(vendor.category);
       _selectedEventTypes = List.from(vendor.eventTypes);
       setState(() {});
@@ -78,6 +84,9 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
     _locationController.dispose();
     _pricingController.dispose();
     _availabilityController.dispose();
+    _contactPhoneController.dispose();
+    _contactEmailController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -244,6 +253,32 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
                   return null;
                 },
               ),
+              SizedBox(height: 16.h),
+
+              // Contact Phone (Optional)
+              CustomTextfield(
+                heading: 'Contact Phone (Optional)',
+                controller: _contactPhoneController,
+                hintText: 'e.g., +923001234567',
+                keyboardType: TextInputType.phone,
+              ),
+              SizedBox(height: 16.h),
+
+              // Contact Email (Optional)
+              CustomTextfield(
+                heading: 'Contact Email (Optional)',
+                controller: _contactEmailController,
+                hintText: 'e.g., info@yourbusiness.com',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              SizedBox(height: 16.h),
+
+              // Description (Optional)
+              CustomTextfield(
+                heading: 'About Your Business (Optional)',
+                controller: _descriptionController,
+                hintText: 'Tell customers about your business...',
+              ),
               SizedBox(height: 32.h),
 
               // Save Button
@@ -296,6 +331,9 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
         eventTypes: _selectedEventTypes,
         pricing: _pricingController.text.trim(),
         availability: _availabilityController.text.trim(),
+        contactPhone: _contactPhoneController.text.trim(),
+        contactEmail: _contactEmailController.text.trim(),
+        description: _descriptionController.text.trim(),
       );
     } else {
       final vendorId = vendorProvider.myVendorProfile?.id ?? '';
@@ -309,6 +347,9 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
         eventTypes: _selectedEventTypes,
         pricing: _pricingController.text.trim(),
         availability: _availabilityController.text.trim(),
+        contactPhone: _contactPhoneController.text.trim(),
+        contactEmail: _contactEmailController.text.trim(),
+        description: _descriptionController.text.trim(),
       );
     }
 

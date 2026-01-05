@@ -545,9 +545,183 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       _buildSection('Pricing', vendor.pricing),
                       SizedBox(height: 16.h),
 
+                      // Pricing Packages
+                      if (vendor.pricingPackages.isNotEmpty) ...[
+                        Text(
+                          'Pricing Packages',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        ...vendor.pricingPackages.map((package) {
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12.h),
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.2),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      package.name,
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12.w,
+                                        vertical: 4.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius:
+                                            BorderRadius.circular(20.r),
+                                      ),
+                                      child: Text(
+                                        package.price,
+                                        style: TextStyle(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (package.description.isNotEmpty) ...[
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    package.description,
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                                if (package.features != null &&
+                                    package.features!.isNotEmpty) ...[
+                                  SizedBox(height: 12.h),
+                                  Wrap(
+                                    spacing: 8.w,
+                                    runSpacing: 8.h,
+                                    children: package.features!.map((feature) {
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w,
+                                          vertical: 4.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              AppColors.primary.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(16.r),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.check,
+                                              size: 14.sp,
+                                              color: AppColors.primary,
+                                            ),
+                                            SizedBox(width: 4.w),
+                                            Text(
+                                              feature,
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        }),
+                        SizedBox(height: 8.h),
+                      ],
+
                       // Availability
                       _buildSection('Availability', vendor.availability),
-                      SizedBox(height: 24.h),
+                      SizedBox(height: 16.h),
+
+                      // Contact Info
+                      if (vendor.contactPhone != null ||
+                          vendor.contactEmail != null) ...[
+                        Text(
+                          'Contact',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.black,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        if (vendor.contactPhone != null)
+                          Row(
+                            children: [
+                              Icon(Icons.phone,
+                                  size: 18.sp, color: Colors.grey),
+                              SizedBox(width: 8.w),
+                              Text(
+                                vendor.contactPhone!,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (vendor.contactEmail != null) ...[
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              Icon(Icons.email,
+                                  size: 18.sp, color: Colors.grey),
+                              SizedBox(width: 8.w),
+                              Text(
+                                vendor.contactEmail!,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        SizedBox(height: 16.h),
+                      ],
+
+                      // Description
+                      if (vendor.description != null &&
+                          vendor.description!.isNotEmpty) ...[
+                        _buildSection('About', vendor.description!),
+                        SizedBox(height: 16.h),
+                      ],
 
                       // Portfolio Images
                       if (vendor.portfolioImages.length > 1) ...[

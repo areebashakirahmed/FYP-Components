@@ -106,6 +106,9 @@ class VendorProvider extends ChangeNotifier {
     required List<String> eventTypes,
     required String pricing,
     required String availability,
+    String? contactPhone,
+    String? contactEmail,
+    String? description,
   }) async {
     _isLoading = true;
     _error = null;
@@ -120,6 +123,9 @@ class VendorProvider extends ChangeNotifier {
       eventTypes: eventTypes,
       pricing: pricing,
       availability: availability,
+      contactPhone: contactPhone,
+      contactEmail: contactEmail,
+      description: description,
     );
 
     bool success = false;
@@ -173,6 +179,9 @@ class VendorProvider extends ChangeNotifier {
     List<String>? eventTypes,
     String? pricing,
     String? availability,
+    String? contactPhone,
+    String? contactEmail,
+    String? description,
   }) async {
     _isLoading = true;
     _error = null;
@@ -188,6 +197,9 @@ class VendorProvider extends ChangeNotifier {
       eventTypes: eventTypes,
       pricing: pricing,
       availability: availability,
+      contactPhone: contactPhone,
+      contactEmail: contactEmail,
+      description: description,
     );
 
     bool success = false;

@@ -1059,7 +1059,211 @@ Future<List<dynamic>> getVendorReviews(String vendorId) async {
 
 ---
 
+## NEW: Profile Update
+
+### Update User Profile
+**Endpoint:** `PUT /auth/profile`
+**Auth:** Required
+
+**Validation Rules (Client-Side):**
+| Field | Rule | Error Message to Show |
+|-------|------|----------------------|
+| name | Optional, min 2 characters | "Name must be at least 2 characters" |
+| phone | Optional | N/A |
+
+**Server Error Messages:**
+| Server Response | User Message to Show |
+|-----------------|---------------------|
+| `"No fields to update"` | "Please enter information to update" |
+| `"No changes made"` | "No changes were made to your profile" |
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "phone": "+923009876543"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "email": "user@example.com",
+  "name": "Updated Name",
+  "phone": "+923009876543",
+  "role": "user"
+}
+```
+
+**Flutter Code:**
+```dart
+Future<Map<String, dynamic>> updateProfile(
+  String token,
+  {String? name, String? phone}
+) async {
+  if (name != null && name.length < 2) {
+    throw Exception('Name must be at least 2 characters');
+  }
+
+  final updates = <String, dynamic>{};
+  if (name != null) updates['name'] = name;
+  if (phone != null) updates['phone'] = phone;
+
+  if (updates.isEmpty) {
+    throw Exception('Please enter information to update');
+  }
+
+  final response = await http.put(
+    Uri.parse('$baseUrl/auth/profile'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode(updates),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else if (response.statusCode == 400) {
+    final body = jsonDecode(response.body);
+    throw Exception(body['detail']);
+  }
+  throw Exception(getErrorMessage(response));
+}
+```
+
+---
+
+## NEW: Pricing Packages
+
+Vendors can now have multiple pricing packages with detailed information.
+
+### Pricing Package Structure
+```json
+{
+  "name": "Basic",
+  "description": "Basic photography package",
+  "price": "PKR 50,000",
+  "features": ["4 hours coverage", "100 edited photos", "Online gallery"]
+}
+```
+
+### Vendor Response with Pricing Packages
+```json
+{
+  "id": "507f1f77bcf86cd799439012",
+  "business_name": "Royal Photography",
+  "category": ["photography"],
+  "services": "Professional photography services",
+  "location": "Karachi",
+  "event_types": ["wedding", "birthday"],
+  "pricing": "PKR 50,000 - 150,000",
+  "availability": "Available on weekends",
+  "pricing_packages": [
+    {
+      "name": "Basic",
+      "description": "Basic photography package",
+      "price": "PKR 50,000",
+      "features": ["4 hours coverage", "100 edited photos"]
+    },
+    {
+      "name": "Premium",
+      "description": "Full day premium package",
+      "price": "PKR 150,000",
+      "features": ["Full day coverage", "500 photos", "Photo album", "Drone shots"]
+    }
+  ],
+  "contact_phone": "+923001234567",
+  "contact_email": "info@royalphoto.com",
+  "description": "Award-winning photography studio"
+}
+```
+
+### Create Vendor with Pricing Packages
+**Request Body:**
+```json
+{
+  "business_name": "Royal Photography",
+  "category": ["photography", "videography"],
+  "services": "Professional photography and videography services",
+  "location": "Karachi",
+  "event_types": ["wedding", "engagement", "birthday"],
+  "pricing": "PKR 50,000 - 150,000",
+  "availability": "Available on weekends",
+  "pricing_packages": [
+    {
+      "name": "Basic",
+      "description": "Basic 4-hour coverage",
+      "price": "PKR 50,000",
+      "features": ["4 hours", "100 photos", "Online gallery"]
+    },
+    {
+      "name": "Premium",
+      "description": "Full day with extras",
+      "price": "PKR 150,000",
+      "features": ["Full day", "500 photos", "Album", "Drone"]
+    }
+  ],
+  "contact_phone": "+923001234567",
+  "contact_email": "info@royalphoto.com",
+  "description": "Award-winning photography studio in Karachi"
+}
+```
+
+### Flutter Code - Display Pricing Packages
+```dart
+class PricingPackage {
+  final String name;
+  final String description;
+  final String price;
+  final List<String>? features;
+
+  PricingPackage({
+    required this.name,
+    required this.description,
+    required this.price,
+    this.features,
+  });
+
+  factory PricingPackage.fromJson(Map<String, dynamic> json) {
+    return PricingPackage(
+      name: json['name'],
+      description: json['description'],
+      price: json['price'],
+      features: json['features'] != null
+          ? List<String>.from(json['features'])
+          : null,
+    );
+  }
+}
+
+// Parse vendor response
+final vendor = jsonDecode(response.body);
+final packages = (vendor['pricing_packages'] as List?)
+    ?.map((p) => PricingPackage.fromJson(p))
+    .toList() ?? [];
+```
+
+---
+
+## NEW: Additional Vendor Fields
+
+Vendors now have additional optional fields:
+- `contact_phone`: Business contact phone
+- `contact_email`: Business contact email
+- `description`: Detailed business description
+- `pricing_packages`: Array of pricing packages
+
+These fields are returned in all vendor responses and can be updated via `PUT /vendors/{id}`.
+
+---
+
 ## Admin Endpoints (For Reference Only - Not for Frontend App)
 
 - These are for admin dashboard, not the Flutter app.
 - Include `/admin/vendors/pending`, `/admin/vendors/{id}/approve`, etc.
+- Category management: `/admin/categories` (CRUD)
+- All reviews: `/admin/reviews/all`
+- All inquiries: `/admin/inquiries/all`
+- All users: `/admin/users/all`

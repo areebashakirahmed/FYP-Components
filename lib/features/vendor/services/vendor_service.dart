@@ -74,23 +74,37 @@ class VendorService {
     required List<String> eventTypes,
     required String pricing,
     required String availability,
+    String? contactPhone,
+    String? contactEmail,
+    String? description,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'business_name': businessName,
+        'category': category,
+        'services': services,
+        'location': location,
+        'event_types': eventTypes,
+        'pricing': pricing,
+        'availability': availability,
+      };
+      if (contactPhone != null && contactPhone.isNotEmpty) {
+        body['contact_phone'] = contactPhone;
+      }
+      if (contactEmail != null && contactEmail.isNotEmpty) {
+        body['contact_email'] = contactEmail;
+      }
+      if (description != null && description.isNotEmpty) {
+        body['description'] = description;
+      }
+
       final response = await http.post(
         Uri.parse(ApiConstants.createVendor),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'business_name': businessName,
-          'category': category,
-          'services': services,
-          'location': location,
-          'event_types': eventTypes,
-          'pricing': pricing,
-          'availability': availability,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -139,6 +153,9 @@ class VendorService {
     List<String>? eventTypes,
     String? pricing,
     String? availability,
+    String? contactPhone,
+    String? contactEmail,
+    String? description,
   }) async {
     try {
       final body = <String, dynamic>{};
@@ -149,6 +166,9 @@ class VendorService {
       if (eventTypes != null) body['event_types'] = eventTypes;
       if (pricing != null) body['pricing'] = pricing;
       if (availability != null) body['availability'] = availability;
+      if (contactPhone != null) body['contact_phone'] = contactPhone;
+      if (contactEmail != null) body['contact_email'] = contactEmail;
+      if (description != null) body['description'] = description;
 
       final response = await http.put(
         Uri.parse(ApiConstants.updateVendor(vendorId)),
