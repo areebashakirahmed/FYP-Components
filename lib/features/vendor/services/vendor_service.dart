@@ -202,7 +202,10 @@ class VendorService {
         Uri.parse(ApiConstants.uploadPortfolio(vendorId)),
       );
       request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+      // Add the file with proper field name
+      final file = await http.MultipartFile.fromPath('image', imagePath);
+      request.files.add(file);
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -210,8 +213,23 @@ class VendorService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
+      } else if (response.statusCode == 403) {
+        return ApiResult.failure('You can only upload to your own portfolio');
+      } else if (response.statusCode == 400) {
+        return ApiResult.failure(
+          'Please upload a valid image (JPEG, PNG, or WebP)',
+        );
       } else {
-        return ApiResult.failure('Failed to upload image: ${response.body}');
+        // Try to parse error message from response
+        try {
+          final errorData = jsonDecode(response.body);
+          final detail = errorData['detail'] ?? 'Failed to upload image';
+          return ApiResult.failure(detail.toString());
+        } catch (_) {
+          return ApiResult.failure(
+            'Failed to upload image (${response.statusCode})',
+          );
+        }
       }
     } catch (e) {
       return ApiResult.failure('Network error: $e');
