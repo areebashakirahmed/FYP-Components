@@ -9,6 +9,7 @@ class ReviewModel {
   // Populated fields (when available)
   final String? userName;
   final String? userImage;
+  final String? vendorName;
 
   ReviewModel({
     required this.id,
@@ -19,6 +20,7 @@ class ReviewModel {
     this.createdAt,
     this.userName,
     this.userImage,
+    this.vendorName,
   });
 
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,7 @@ class ReviewModel {
           : null,
       userName: json['user_name'] ?? json['userName'],
       userImage: json['user_image'] ?? json['userImage'],
+      vendorName: json['vendor_name'] ?? json['vendorName'],
     );
   }
 

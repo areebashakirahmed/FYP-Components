@@ -5,6 +5,7 @@ import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/inquiry/models/inquiry_model.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
+import 'package:mehfilista/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class InquiryDetailScreen extends StatefulWidget {
@@ -18,7 +19,15 @@ class InquiryDetailScreen extends StatefulWidget {
 
 class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
   final TextEditingController _responseController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isResponding = false;
+  late InquiryModel _currentInquiry;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentInquiry = widget.inquiry;
+  }
 
   @override
   void dispose() {
@@ -67,12 +76,13 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             SizedBox(height: 16.h),
 
             // Vendor Response (if any)
-            if (widget.inquiry.vendorResponse != null &&
-                widget.inquiry.vendorResponse!.isNotEmpty)
+            if (_currentInquiry.vendorResponse != null &&
+                _currentInquiry.vendorResponse!.isNotEmpty)
               _buildVendorResponseCard(),
 
             // Response Section (for vendors)
-            if (isVendor && widget.inquiry.status == InquiryStatus.pending) ...[
+            if (isVendor &&
+                _currentInquiry.status == InquiryStatus.pending) ...[
               SizedBox(height: 16.h),
               _buildResponseSection(),
             ],
@@ -89,23 +99,23 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
         padding: EdgeInsets.all(16.w),
         child: Row(
           children: [
-            _buildStatusIcon(widget.inquiry.status),
+            _buildStatusIcon(_currentInquiry.status),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _getStatusTitle(widget.inquiry.status),
+                    _getStatusTitle(_currentInquiry.status),
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
-                      color: _getStatusColor(widget.inquiry.status),
+                      color: _getStatusColor(_currentInquiry.status),
                     ),
                   ),
                   SizedBox(height: 4.h),
                   Text(
-                    _getStatusDescription(widget.inquiry.status),
+                    _getStatusDescription(_currentInquiry.status),
                     style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
                   ),
                 ],
@@ -199,36 +209,36 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             _buildDetailRow(
               Icons.event,
               'Event Type',
-              widget.inquiry.eventType,
+              _currentInquiry.eventType,
             ),
             SizedBox(height: 12.h),
             _buildDetailRow(
               Icons.calendar_today,
               'Preferred Date',
-              widget.inquiry.preferredDate,
+              _currentInquiry.preferredDate,
             ),
-            if (widget.inquiry.vendorName != null) ...[
+            if (_currentInquiry.vendorName != null) ...[
               SizedBox(height: 12.h),
               _buildDetailRow(
                 Icons.store,
                 'Vendor',
-                widget.inquiry.vendorName!,
+                _currentInquiry.vendorName!,
               ),
             ],
-            if (widget.inquiry.userName != null) ...[
+            if (_currentInquiry.userName != null) ...[
               SizedBox(height: 12.h),
               _buildDetailRow(
                 Icons.person,
                 'Customer',
-                widget.inquiry.userName!,
+                _currentInquiry.userName!,
               ),
             ],
-            if (widget.inquiry.createdAt != null) ...[
+            if (_currentInquiry.createdAt != null) ...[
               SizedBox(height: 12.h),
               _buildDetailRow(
                 Icons.access_time,
                 'Sent On',
-                _formatDateTime(widget.inquiry.createdAt!),
+                _formatDateTime(_currentInquiry.createdAt!),
               ),
             ],
           ],
@@ -284,15 +294,15 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             ),
             SizedBox(height: 12.h),
             Text(
-              widget.inquiry.message.isEmpty
+              _currentInquiry.message.isEmpty
                   ? 'No message provided'
-                  : widget.inquiry.message,
+                  : _currentInquiry.message,
               style: TextStyle(
                 fontSize: 14.sp,
-                color: widget.inquiry.message.isEmpty
+                color: _currentInquiry.message.isEmpty
                     ? Colors.grey
                     : Colors.grey[700],
-                fontStyle: widget.inquiry.message.isEmpty
+                fontStyle: _currentInquiry.message.isEmpty
                     ? FontStyle.italic
                     : FontStyle.normal,
               ),
@@ -328,7 +338,7 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             ),
             SizedBox(height: 12.h),
             Text(
-              widget.inquiry.vendorResponse!,
+              _currentInquiry.vendorResponse!,
               style: TextStyle(fontSize: 14.sp, color: Colors.grey[800]),
             ),
           ],
@@ -342,92 +352,99 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
         padding: EdgeInsets.all(16.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Respond to Inquiry',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Respond to Inquiry',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.black,
+                ),
               ),
-            ),
-            SizedBox(height: 12.h),
-            TextField(
-              controller: _responseController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'Enter your response...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
+              SizedBox(height: 12.h),
+              TextFormField(
+                controller: _responseController,
+                maxLines: 4,
+                maxLength: 1000,
+                decoration: InputDecoration(
+                  hintText: 'Enter your response (minimum 10 characters)...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  contentPadding: EdgeInsets.all(12.w),
+                  helperText: 'Be professional and provide clear details',
                 ),
-                contentPadding: EdgeInsets.all(12.w),
+                validator: Validators.validateVendorResponse,
               ),
-            ),
-            SizedBox(height: 16.h),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _isResponding ? null : () => _respond(false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+              SizedBox(height: 16.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isResponding ? null : () => _respond(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
                       ),
+                      child: _isResponding
+                          ? SizedBox(
+                              height: 20.h,
+                              width: 20.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Decline'),
                     ),
-                    child: _isResponding
-                        ? SizedBox(
-                            height: 20.h,
-                            width: 20.w,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Decline'),
                   ),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isResponding ? null : () => _respond(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isResponding ? null : () => _respond(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
                       ),
+                      child: _isResponding
+                          ? SizedBox(
+                              height: 20.h,
+                              width: 20.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Accept'),
                     ),
-                    child: _isResponding
-                        ? SizedBox(
-                            height: 20.h,
-                            width: 20.w,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Accept'),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Future<void> _respond(bool accept) async {
-    final response = _responseController.text.trim();
-    if (response.isEmpty) {
-      Fluttertoast.showToast(msg: 'Please enter a response');
+    // Validate the form first
+    if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    final response = _responseController.text.trim();
 
     setState(() => _isResponding = true);
 
@@ -445,13 +462,13 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
     if (accept) {
       success = await inquiryProvider.acceptInquiry(
         token: token,
-        inquiryId: widget.inquiry.id,
+        inquiryId: _currentInquiry.id,
         vendorResponse: response,
       );
     } else {
       success = await inquiryProvider.declineInquiry(
         token: token,
-        inquiryId: widget.inquiry.id,
+        inquiryId: _currentInquiry.id,
         vendorResponse: response,
       );
     }
@@ -460,9 +477,10 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
 
     if (success) {
       Fluttertoast.showToast(
-        msg: accept ? 'Inquiry accepted' : 'Inquiry declined',
+        msg: accept ? 'Inquiry accepted successfully' : 'Inquiry declined',
       );
-      Navigator.pop(context);
+      // Pop with result to indicate success
+      Navigator.pop(context, true);
     } else {
       Fluttertoast.showToast(msg: inquiryProvider.error ?? 'Failed to respond');
     }

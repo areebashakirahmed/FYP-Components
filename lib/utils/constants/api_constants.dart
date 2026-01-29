@@ -30,6 +30,7 @@ class ApiConstants {
 
   // Reviews
   static const String leaveReview = '$baseUrl/reviews';
+  static const String myReviews = '$baseUrl/reviews/me';
   static String vendorReviews(String vendorId) =>
       '$baseUrl/reviews/vendor/$vendorId';
 

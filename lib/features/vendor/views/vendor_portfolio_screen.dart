@@ -263,6 +263,15 @@ class _VendorPortfolioScreenState extends State<VendorPortfolioScreen> {
 
       if (pickedFile == null) return;
 
+      // Validate file extension
+      final extension = pickedFile.path.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
+        Fluttertoast.showToast(
+          msg: 'Please select a valid image (JPEG, PNG, or WebP)',
+        );
+        return;
+      }
+
       setState(() => _isUploading = true);
 
       final authProvider = context.read<AuthProvider>();
@@ -293,7 +302,7 @@ class _VendorPortfolioScreenState extends State<VendorPortfolioScreen> {
       }
     } catch (e) {
       setState(() => _isUploading = false);
-      Fluttertoast.showToast(msg: 'Error: $e');
+      Fluttertoast.showToast(msg: 'Error picking image: $e');
     }
   }
 }

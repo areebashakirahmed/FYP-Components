@@ -25,6 +25,7 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
   String? _selectedCategory;
   String? _selectedLocation;
   double? _minRating;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -44,12 +45,38 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
   }
 
   void _performSearch() {
+    _searchQuery = _searchController.text.trim().toLowerCase();
     context.read<VendorProvider>().searchVendors(
       category: _selectedCategory,
       location: _selectedLocation,
       minRating: _minRating,
       approvedOnly: true,
     );
+  }
+
+  /// Filter vendors locally based on search query
+  List<VendorModel> _filterVendors(List<VendorModel> vendors) {
+    if (_searchQuery.isEmpty) return vendors;
+
+    return vendors.where((vendor) {
+      // Search in business name
+      if (vendor.businessName.toLowerCase().contains(_searchQuery)) return true;
+      // Search in categories
+      if (vendor.category.any(
+        (cat) => cat.toLowerCase().contains(_searchQuery),
+      ))
+        return true;
+      // Search in location
+      if (vendor.location.toLowerCase().contains(_searchQuery)) return true;
+      // Search in services
+      if (vendor.services.toLowerCase().contains(_searchQuery)) return true;
+      // Search in event types
+      if (vendor.eventTypes.any(
+        (type) => type.toLowerCase().contains(_searchQuery),
+      ))
+        return true;
+      return false;
+    }).toList();
   }
 
   void _showFilterDialog() {
@@ -261,7 +288,7 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search vendors...',
+                hintText: 'Search vendors by name, category...',
                 prefixIcon: Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
@@ -273,7 +300,23 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
                   vertical: 0,
                   horizontal: 16.w,
                 ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.trim().toLowerCase();
+                });
+              },
               onSubmitted: (_) => _performSearch(),
             ),
           ),
@@ -379,11 +422,38 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
                   );
                 }
 
+                // Apply local text search filter
+                final filteredVendors = _filterVendors(provider.vendors);
+
+                if (filteredVendors.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off, size: 60.sp, color: Colors.grey),
+                        SizedBox(height: 16.h),
+                        Text(
+                          'No vendors match "$_searchQuery"',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Try a different search term or category',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   padding: EdgeInsets.all(16.w),
-                  itemCount: provider.vendors.length,
+                  itemCount: filteredVendors.length,
                   itemBuilder: (context, index) {
-                    final vendor = provider.vendors[index];
+                    final vendor = filteredVendors[index];
                     return _buildVendorCard(vendor);
                   },
                 );

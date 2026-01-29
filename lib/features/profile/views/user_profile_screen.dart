@@ -5,6 +5,7 @@ import 'package:mehfilista/features/auth/model/user_model.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/auth/views/login_screen.dart';
 import 'package:mehfilista/features/profile/views/edit_profile_screen.dart';
+import 'package:mehfilista/features/review/views/my_reviews_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
 
@@ -112,6 +113,19 @@ class UserProfileScreen extends StatelessWidget {
                 _buildInfoCard(
                   title: 'Settings',
                   children: [
+                    _buildSettingsRow(
+                      icon: Icons.rate_review,
+                      label: 'My Reviews',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MyReviewsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDivider(),
                     _buildSettingsRow(
                       icon: Icons.notifications,
                       label: 'Notifications',

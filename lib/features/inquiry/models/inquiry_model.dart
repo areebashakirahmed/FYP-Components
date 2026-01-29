@@ -17,6 +17,11 @@ class InquiryModel {
   final String? userEmail;
   final String? vendorName;
 
+  // Additional fields for enhanced inquiry
+  final String? eventLocation;
+  final int? guestCount;
+  final String? selectedPackage;
+
   InquiryModel({
     required this.id,
     required this.userId,
@@ -31,6 +36,9 @@ class InquiryModel {
     this.userName,
     this.userEmail,
     this.vendorName,
+    this.eventLocation,
+    this.guestCount,
+    this.selectedPackage,
   });
 
   factory InquiryModel.fromJson(Map<String, dynamic> json) {
@@ -63,6 +71,9 @@ class InquiryModel {
       userName: json['user_name'] ?? json['userName'],
       userEmail: json['user_email'] ?? json['userEmail'],
       vendorName: json['vendor_name'] ?? json['vendorName'],
+      eventLocation: json['event_location'] ?? json['eventLocation'],
+      guestCount: json['guest_count'] ?? json['guestCount'],
+      selectedPackage: json['selected_package'] ?? json['selectedPackage'],
     );
   }
 

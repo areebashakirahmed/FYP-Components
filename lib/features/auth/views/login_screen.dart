@@ -9,6 +9,7 @@ import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
 import 'package:mehfilista/utils/helpers/localization_extension.dart';
+import 'package:mehfilista/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -89,17 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   heading: context.loc.semail,
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    ).hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
+                  validator: Validators.validateEmail,
                 ),
 
                 SizedBox(height: 20.h),
@@ -109,15 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   heading: context.loc.spw,
                   controller: passwordController,
                   isPassword: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
+                  validator: Validators.validatePassword,
                 ),
                 SizedBox(height: 30.h),
 

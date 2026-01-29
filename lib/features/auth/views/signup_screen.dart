@@ -8,6 +8,7 @@ import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
 import 'package:mehfilista/utils/helpers/localization_extension.dart';
+import 'package:mehfilista/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -105,12 +106,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     hintText: "Full Name",
                     heading: "Name",
                     controller: nameController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
+                    validator: Validators.validateName,
                   ),
 
                   SizedBox(height: 20.h),
@@ -119,17 +115,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     heading: context.loc.semail,
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!RegExp(
-                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      ).hasMatch(value)) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
+                    validator: Validators.validateEmail,
                   ),
 
                   SizedBox(height: 20.h),
@@ -137,20 +123,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     hintText: "City Name",
                     heading: "City",
                     controller: cityController,
+                    validator: Validators.validateCity,
                   ),
 
                   SizedBox(height: 20.h),
                   CustomTextfield(
-                    hintText: "Contact",
+                    hintText: "03001234567",
                     heading: "Phone",
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your phone number';
-                      }
-                      return null;
-                    },
+                    validator: Validators.validatePhone,
                   ),
 
                   SizedBox(height: 20.h),

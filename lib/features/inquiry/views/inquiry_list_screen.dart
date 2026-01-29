@@ -156,13 +156,17 @@ class _InquiryListScreenState extends State<InquiryListScreen>
           return _InquiryCard(
             inquiry: inquiry,
             isVendor: isVendor,
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => InquiryDetailScreen(inquiry: inquiry),
                 ),
               );
+              // Refresh inquiries if response was submitted
+              if (result == true) {
+                _loadInquiries();
+              }
             },
           );
         },

@@ -7,11 +7,13 @@ class ReviewProvider extends ChangeNotifier {
 
   // State
   List<ReviewModel> _vendorReviews = [];
+  List<ReviewModel> _myReviews = [];
   bool _isLoading = false;
   String? _error;
 
   // Getters
   List<ReviewModel> get vendorReviews => _vendorReviews;
+  List<ReviewModel> get myReviews => _myReviews;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasError => _error != null;
@@ -91,9 +93,32 @@ class ReviewProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Load my reviews (User only)
+  Future<void> loadMyReviews(String token) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final result = await _reviewService.getMyReviews(token);
+
+    result.when(
+      success: (data) {
+        _myReviews = data;
+        _error = null;
+      },
+      failure: (error) {
+        _error = error;
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   /// Clear reviews
   void clearReviews() {
     _vendorReviews = [];
+    _myReviews = [];
     _error = null;
     notifyListeners();
   }

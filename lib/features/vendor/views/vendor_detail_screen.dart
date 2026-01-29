@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
+import 'package:mehfilista/features/inquiry/models/inquiry_model.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
 import 'package:mehfilista/features/review/providers/review_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
+import 'package:mehfilista/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class VendorDetailScreen extends StatefulWidget {
@@ -24,11 +26,18 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<VendorProvider>().getVendorDetails(widget.vendorId);
       context.read<ReviewProvider>().loadVendorReviews(widget.vendorId);
+      // Load user inquiries to check booking status for reviews
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.isAuthenticated && !authProvider.isVendor) {
+        context.read<InquiryProvider>().loadMyInquiries(authProvider.token!);
+      }
     });
   }
 
   void _showInquiryDialog() {
     final authProvider = context.read<AuthProvider>();
+    final vendorProvider = context.read<VendorProvider>();
+    final vendor = vendorProvider.selectedVendor;
 
     if (!authProvider.isAuthenticated) {
       Fluttertoast.showToast(msg: 'Please login to send an inquiry');
@@ -42,175 +51,15 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
 
     final eventTypeController = TextEditingController();
     final dateController = TextEditingController();
+    final locationController = TextEditingController();
+    final guestCountController = TextEditingController();
     final messageController = TextEditingController();
     DateTime? selectedDate;
+    String? selectedPackage;
+    final formKey = GlobalKey<FormState>();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20.w,
-            right: 20.w,
-            top: 20.h,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Send Inquiry',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 20.h),
-
-              // Event Type
-              TextField(
-                controller: eventTypeController,
-                decoration: InputDecoration(
-                  labelText: 'Event Type',
-                  hintText: 'e.g., Wedding, Birthday, Corporate',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                ),
-              ),
-              SizedBox(height: 12.h),
-
-              // Preferred Date
-              TextField(
-                controller: dateController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Preferred Date',
-                  hintText: 'Select date',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now().add(Duration(days: 7)),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(Duration(days: 365)),
-                  );
-                  if (date != null) {
-                    selectedDate = date;
-                    dateController.text =
-                        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                  }
-                },
-              ),
-              SizedBox(height: 12.h),
-
-              // Message
-              TextField(
-                controller: messageController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Message',
-                  hintText: 'Describe your requirements...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20.h),
-
-              // Submit Button
-              Consumer<InquiryProvider>(
-                builder: (context, inquiryProvider, _) {
-                  return SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                      ),
-                      onPressed: inquiryProvider.isLoading
-                          ? null
-                          : () async {
-                              if (eventTypeController.text.isEmpty ||
-                                  dateController.text.isEmpty ||
-                                  messageController.text.isEmpty) {
-                                Fluttertoast.showToast(
-                                  msg: 'Please fill all fields',
-                                );
-                                return;
-                              }
-
-                              final success = await inquiryProvider.sendInquiry(
-                                token: authProvider.token ?? '',
-                                vendorId: widget.vendorId,
-                                eventType: eventTypeController.text,
-                                preferredDate: dateController.text,
-                                message: messageController.text,
-                              );
-
-                              if (success && context.mounted) {
-                                Navigator.pop(context);
-                                Fluttertoast.showToast(
-                                  msg: 'Inquiry sent successfully!',
-                                );
-                              } else if (inquiryProvider.error != null) {
-                                Fluttertoast.showToast(
-                                  msg: inquiryProvider.error ?? 'Failed to send inquiry',
-                                );
-                              }
-                            },
-                      child: inquiryProvider.isLoading
-                          ? SizedBox(
-                              height: 20.h,
-                              width: 20.w,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              'Send Inquiry',
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showReviewDialog() {
-    final authProvider = context.read<AuthProvider>();
-
-    if (!authProvider.isAuthenticated) {
-      Fluttertoast.showToast(msg: 'Please login to leave a review');
-      return;
-    }
-
-    if (authProvider.isVendor) {
-      Fluttertoast.showToast(msg: 'Vendors cannot leave reviews');
-      return;
-    }
-
-    int selectedRating = 5;
-    final commentController = TextEditingController();
+    // Get packages from vendor if available
+    final packages = vendor?.pricingPackages ?? [];
 
     showModalBottomSheet(
       context: context,
@@ -228,129 +77,567 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 top: 20.h,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Leave a Review',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  // Rating
-                  Text('Rating', style: TextStyle(fontWeight: FontWeight.w500)),
-                  SizedBox(height: 8.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < selectedRating
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.amber,
-                          size: 36.sp,
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Send Inquiry',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
                         ),
-                        onPressed: () {
-                          setSheetState(() => selectedRating = index + 1);
-                        },
-                      );
-                    }),
-                  ),
-                  SizedBox(height: 12.h),
-
-                  // Comment
-                  TextField(
-                    controller: commentController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'Comment',
-                      hintText: 'Share your experience...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
+                      SizedBox(height: 20.h),
 
-                  // Submit Button
-                  Consumer<ReviewProvider>(
-                    builder: (context, reviewProvider, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                            shape: RoundedRectangleBorder(
+                      // Event Type
+                      TextFormField(
+                        controller: eventTypeController,
+                        decoration: InputDecoration(
+                          labelText: 'Event Type *',
+                          hintText: 'e.g., Wedding, Birthday, Corporate',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                        ),
+                        validator: Validators.validateEventType,
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Preferred Date
+                      TextFormField(
+                        controller: dateController,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: 'Preferred Date *',
+                          hintText: 'Select date',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        validator: (value) => Validators.validateRequired(
+                          value,
+                          fieldName: 'Date',
+                        ),
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now().add(Duration(days: 7)),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(Duration(days: 365)),
+                          );
+                          if (date != null) {
+                            selectedDate = date;
+                            dateController.text =
+                                '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                          }
+                        },
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Event Location
+                      TextFormField(
+                        controller: locationController,
+                        decoration: InputDecoration(
+                          labelText: 'Event Location *',
+                          hintText: 'Enter event venue/location',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          prefixIcon: Icon(Icons.location_on_outlined),
+                        ),
+                        validator: Validators.validateLocation,
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Guest Count
+                      TextFormField(
+                        controller: guestCountController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Expected Guests',
+                          hintText: 'Number of guests',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          prefixIcon: Icon(Icons.people_outline),
+                        ),
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            return Validators.validateGuestCount(value);
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Package Selection (if vendor has packages)
+                      if (packages.isNotEmpty) ...[
+                        DropdownButtonFormField<String>(
+                          value: selectedPackage,
+                          decoration: InputDecoration(
+                            labelText: 'Select Package',
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                           ),
-                          onPressed: reviewProvider.isLoading
-                              ? null
-                              : () async {
-                                  final comment = commentController.text.trim();
-                                  if (comment.isEmpty) {
-                                    Fluttertoast.showToast(
-                                      msg: 'Please add a comment',
-                                    );
-                                    return;
-                                  }
-                                  if (comment.length < 10) {
-                                    Fluttertoast.showToast(
-                                      msg: 'Comment must be at least 10 characters',
-                                    );
-                                    return;
-                                  }
-
-                                  final success = await reviewProvider
-                                      .leaveReview(
-                                        token: authProvider.token ?? '',
-                                        vendorId: widget.vendorId,
-                                        rating: selectedRating,
-                                        comment: comment,
-                                      );
-
-                                  if (success && context.mounted) {
-                                    Navigator.pop(context);
-                                    Fluttertoast.showToast(
-                                      msg: 'Review submitted!',
-                                    );
-                                  } else if (reviewProvider.error != null) {
-                                    Fluttertoast.showToast(
-                                      msg: reviewProvider.error ?? 'Failed to submit review',
-                                    );
-                                  }
-                                },
-                          child: reviewProvider.isLoading
-                              ? SizedBox(
-                                  height: 20.h,
-                                  width: 20.w,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'Submit Review',
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text('No specific package'),
+                            ),
+                            ...packages.map(
+                              (pkg) => DropdownMenuItem(
+                                value: pkg.name,
+                                child: Text('${pkg.name} - ${pkg.price}'),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setSheetState(() => selectedPackage = value);
+                          },
                         ),
-                      );
-                    },
+                        SizedBox(height: 12.h),
+                      ],
+
+                      // Message
+                      TextFormField(
+                        controller: messageController,
+                        maxLines: 3,
+                        maxLength: 500,
+                        decoration: InputDecoration(
+                          labelText: 'Message *',
+                          hintText: 'Describe your requirements in detail...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          helperText: 'Minimum 10 characters',
+                        ),
+                        validator: Validators.validateMessage,
+                      ),
+                      SizedBox(height: 20.h),
+
+                      // Submit Button
+                      Consumer<InquiryProvider>(
+                        builder: (context, inquiryProvider, _) {
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              onPressed: inquiryProvider.isLoading
+                                  ? null
+                                  : () async {
+                                      if (!formKey.currentState!.validate()) {
+                                        return;
+                                      }
+
+                                      // Build detailed message with all fields
+                                      final detailedMessage =
+                                          _buildInquiryMessage(
+                                            message: messageController.text,
+                                            location: locationController.text,
+                                            guestCount:
+                                                guestCountController.text,
+                                            selectedPackage: selectedPackage,
+                                          );
+
+                                      final success = await inquiryProvider
+                                          .sendInquiry(
+                                            token: authProvider.token ?? '',
+                                            vendorId: widget.vendorId,
+                                            eventType: eventTypeController.text,
+                                            preferredDate: dateController.text,
+                                            message: detailedMessage,
+                                          );
+
+                                      if (success && context.mounted) {
+                                        Navigator.pop(context);
+                                        Fluttertoast.showToast(
+                                          msg: 'Inquiry sent successfully!',
+                                        );
+                                      } else if (inquiryProvider.error !=
+                                          null) {
+                                        Fluttertoast.showToast(
+                                          msg:
+                                              inquiryProvider.error ??
+                                              'Failed to send inquiry',
+                                        );
+                                      }
+                                    },
+                              child: inquiryProvider.isLoading
+                                  ? SizedBox(
+                                      height: 20.h,
+                                      width: 20.w,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Send Inquiry',
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  String _buildInquiryMessage({
+    required String message,
+    required String location,
+    String? guestCount,
+    String? selectedPackage,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln(message);
+    buffer.writeln();
+    buffer.writeln('--- Additional Details ---');
+    buffer.writeln('Location: $location');
+    if (guestCount != null && guestCount.isNotEmpty) {
+      buffer.writeln('Expected Guests: $guestCount');
+    }
+    if (selectedPackage != null) {
+      buffer.writeln('Interested Package: $selectedPackage');
+    }
+    return buffer.toString();
+  }
+
+  void _showReviewDialog() {
+    final authProvider = context.read<AuthProvider>();
+    final inquiryProvider = context.read<InquiryProvider>();
+
+    if (!authProvider.isAuthenticated) {
+      Fluttertoast.showToast(msg: 'Please login to leave a review');
+      return;
+    }
+
+    if (authProvider.isVendor) {
+      Fluttertoast.showToast(msg: 'Vendors cannot leave reviews');
+      return;
+    }
+
+    // Check if user has a completed/accepted inquiry with this vendor
+    final hasBooking = inquiryProvider.myInquiries.any(
+      (inquiry) =>
+          inquiry.vendorId == widget.vendorId &&
+          inquiry.status == InquiryStatus.accepted,
+    );
+
+    if (!hasBooking) {
+      _showBookingRequiredDialog();
+      return;
+    }
+
+    int selectedRating = 5;
+    final commentController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20.w,
+                right: 20.w,
+                top: 20.h,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Leave a Review',
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    // Rating
+                    Text(
+                      'Rating',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < selectedRating
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                            size: 36.sp,
+                          ),
+                          onPressed: () {
+                            setSheetState(() => selectedRating = index + 1);
+                          },
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Comment
+                    TextFormField(
+                      controller: commentController,
+                      maxLines: 3,
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        labelText: 'Comment *',
+                        hintText: 'Share your experience...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        helperText: 'Minimum 10 characters',
+                      ),
+                      validator: Validators.validateReviewComment,
+                    ),
+                    SizedBox(height: 20.h),
+
+                    // Submit Button
+                    Consumer<ReviewProvider>(
+                      builder: (context, reviewProvider, _) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            onPressed: reviewProvider.isLoading
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) {
+                                      return;
+                                    }
+
+                                    final success = await reviewProvider
+                                        .leaveReview(
+                                          token: authProvider.token ?? '',
+                                          vendorId: widget.vendorId,
+                                          rating: selectedRating,
+                                          comment: commentController.text
+                                              .trim(),
+                                        );
+
+                                    if (success && context.mounted) {
+                                      Navigator.pop(context);
+                                      Fluttertoast.showToast(
+                                        msg: 'Review submitted!',
+                                      );
+                                    } else if (reviewProvider.error != null) {
+                                      Fluttertoast.showToast(
+                                        msg:
+                                            reviewProvider.error ??
+                                            'Failed to submit review',
+                                      );
+                                    }
+                                  },
+                            child: reviewProvider.isLoading
+                                ? SizedBox(
+                                    height: 20.h,
+                                    width: 20.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Submit Review',
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showBookingRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange),
+            SizedBox(width: 8.w),
+            Text('Booking Required'),
+          ],
+        ),
+        content: Text(
+          'You can only leave a review after your inquiry has been accepted by this vendor. Please send an inquiry first and wait for acceptance.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showInquiryDialog();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: Text('Send Inquiry', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChatDialog() {
+    final authProvider = context.read<AuthProvider>();
+    final vendorProvider = context.read<VendorProvider>();
+    final vendor = vendorProvider.selectedVendor;
+
+    if (!authProvider.isAuthenticated) {
+      Fluttertoast.showToast(msg: 'Please login to chat with vendor');
+      return;
+    }
+
+    if (authProvider.isVendor) {
+      Fluttertoast.showToast(msg: 'Vendors cannot chat with other vendors');
+      return;
+    }
+
+    // Show chat/contact options dialog
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.all(20.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Contact ${vendor?.businessName ?? "Vendor"}',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20.h),
+
+              // Phone Option
+              if (vendor?.contactPhone != null &&
+                  vendor!.contactPhone!.isNotEmpty)
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.withOpacity(0.1),
+                    child: Icon(Icons.phone, color: Colors.green),
+                  ),
+                  title: Text('Call'),
+                  subtitle: Text(vendor.contactPhone!),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Fluttertoast.showToast(msg: 'Opening dialer...');
+                    // In production, use url_launcher to make call
+                  },
+                ),
+
+              // Email Option
+              if (vendor?.contactEmail != null &&
+                  vendor!.contactEmail!.isNotEmpty)
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    child: Icon(Icons.email, color: Colors.blue),
+                  ),
+                  title: Text('Email'),
+                  subtitle: Text(vendor.contactEmail!),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Fluttertoast.showToast(msg: 'Opening email app...');
+                    // In production, use url_launcher to send email
+                  },
+                ),
+
+              // WhatsApp Option (if phone exists)
+              if (vendor?.contactPhone != null &&
+                  vendor!.contactPhone!.isNotEmpty)
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.shade700.withOpacity(0.1),
+                    child: Icon(Icons.chat, color: Colors.green.shade700),
+                  ),
+                  title: Text('WhatsApp'),
+                  subtitle: Text('Chat on WhatsApp'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Fluttertoast.showToast(msg: 'Opening WhatsApp...');
+                    // In production, use url_launcher to open WhatsApp
+                  },
+                ),
+
+              // Send Inquiry (fallback)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: Icon(Icons.mail_outline, color: AppColors.primary),
+                ),
+                title: Text('Send Inquiry'),
+                subtitle: Text('Request quote or information'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showInquiryDialog();
+                },
+              ),
+
+              SizedBox(height: 10.h),
+            ],
+          ),
         );
       },
     );
@@ -594,8 +881,9 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: AppColors.primary,
-                                        borderRadius:
-                                            BorderRadius.circular(20.r),
+                                        borderRadius: BorderRadius.circular(
+                                          20.r,
+                                        ),
                                       ),
                                       child: Text(
                                         package.price,
@@ -631,10 +919,12 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                           vertical: 4.h,
                                         ),
                                         decoration: BoxDecoration(
-                                          color:
-                                              AppColors.primary.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(16.r),
+                                          color: AppColors.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            16.r,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -684,8 +974,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                         if (vendor.contactPhone != null)
                           Row(
                             children: [
-                              Icon(Icons.phone,
-                                  size: 18.sp, color: Colors.grey),
+                              Icon(
+                                Icons.phone,
+                                size: 18.sp,
+                                color: Colors.grey,
+                              ),
                               SizedBox(width: 8.w),
                               Text(
                                 vendor.contactPhone!,
@@ -700,8 +993,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           SizedBox(height: 4.h),
                           Row(
                             children: [
-                              Icon(Icons.email,
-                                  size: 18.sp, color: Colors.grey),
+                              Icon(
+                                Icons.email,
+                                size: 18.sp,
+                                color: Colors.grey,
+                              ),
                               SizedBox(width: 8.w),
                               Text(
                                 vendor.contactEmail!,
@@ -885,23 +1181,55 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
           ],
         ),
         child: SafeArea(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: EdgeInsets.symmetric(vertical: 14.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
+          child: Row(
+            children: [
+              // Chat Button
+              Expanded(
+                flex: 1,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  onPressed: () => _showChatDialog(),
+                  icon: Icon(Icons.chat_bubble_outline, size: 20.sp),
+                  label: Text(
+                    'Chat',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            onPressed: _showInquiryDialog,
-            child: Text(
-              'Send Inquiry',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+              SizedBox(width: 12.w),
+              // Send Inquiry Button
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  onPressed: _showInquiryDialog,
+                  child: Text(
+                    'Send Inquiry',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

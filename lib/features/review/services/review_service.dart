@@ -13,7 +13,9 @@ class ReviewService {
       // Handle validation errors (422)
       if (response.statusCode == 422 && body['detail'] is List) {
         final errors = body['detail'] as List;
-        return errors.map((e) => '${e['loc']?.last ?? ''}: ${e['msg']}').join('\n');
+        return errors
+            .map((e) => '${e['loc']?.last ?? ''}: ${e['msg']}')
+            .join('\n');
       }
 
       // Handle standard errors
@@ -83,6 +85,29 @@ class ReviewService {
         return ApiResult.success(reviews);
       } else {
         return ApiResult.failure('Failed to get reviews: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Get my reviews (User only)
+  Future<ApiResult<List<ReviewModel>>> getMyReviews(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConstants.myReviews),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final reviews = data.map((e) => ReviewModel.fromJson(e)).toList();
+        return ApiResult.success(reviews);
+      } else {
+        return ApiResult.failure('Failed to get my reviews: ${response.body}');
       }
     } catch (e) {
       return ApiResult.failure('Network error: $e');
