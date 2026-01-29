@@ -4,6 +4,7 @@ import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/inquiry/models/inquiry_model.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
+import 'package:mehfilista/features/vendor/views/vendor_packages_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_portfolio_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_profile_edit_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
@@ -230,36 +231,61 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 
   Widget _buildQuickActions() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.edit,
-            label: 'Edit Profile',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const VendorProfileEditScreen(),
-                ),
-              );
-            },
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.edit,
+                label: 'Edit Profile',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VendorProfileEditScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.photo_library,
+                label: 'Portfolio',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VendorPortfolioScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        SizedBox(width: 12.w),
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.photo_library,
-            label: 'Portfolio',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const VendorPortfolioScreen(),
-                ),
-              );
-            },
-          ),
+        SizedBox(height: 12.h),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.price_change,
+                label: 'Packages',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VendorPackagesScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(child: SizedBox()), // Empty space for future actions
+          ],
         ),
       ],
     );

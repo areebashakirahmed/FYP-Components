@@ -77,6 +77,7 @@ class VendorService {
     String? contactPhone,
     String? contactEmail,
     String? description,
+    List<Map<String, dynamic>>? pricingPackages,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -96,6 +97,9 @@ class VendorService {
       }
       if (description != null && description.isNotEmpty) {
         body['description'] = description;
+      }
+      if (pricingPackages != null && pricingPackages.isNotEmpty) {
+        body['pricing_packages'] = pricingPackages;
       }
 
       final response = await http.post(
@@ -156,6 +160,7 @@ class VendorService {
     String? contactPhone,
     String? contactEmail,
     String? description,
+    List<Map<String, dynamic>>? pricingPackages,
   }) async {
     try {
       final body = <String, dynamic>{};
@@ -169,6 +174,7 @@ class VendorService {
       if (contactPhone != null) body['contact_phone'] = contactPhone;
       if (contactEmail != null) body['contact_email'] = contactEmail;
       if (description != null) body['description'] = description;
+      if (pricingPackages != null) body['pricing_packages'] = pricingPackages;
 
       final response = await http.put(
         Uri.parse(ApiConstants.updateVendor(vendorId)),

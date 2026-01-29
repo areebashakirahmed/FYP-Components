@@ -109,6 +109,7 @@ class VendorProvider extends ChangeNotifier {
     String? contactPhone,
     String? contactEmail,
     String? description,
+    List<Map<String, dynamic>>? pricingPackages,
   }) async {
     _isLoading = true;
     _error = null;
@@ -126,6 +127,7 @@ class VendorProvider extends ChangeNotifier {
       contactPhone: contactPhone,
       contactEmail: contactEmail,
       description: description,
+      pricingPackages: pricingPackages,
     );
 
     bool success = false;
@@ -182,6 +184,7 @@ class VendorProvider extends ChangeNotifier {
     String? contactPhone,
     String? contactEmail,
     String? description,
+    List<Map<String, dynamic>>? pricingPackages,
   }) async {
     _isLoading = true;
     _error = null;
@@ -200,6 +203,7 @@ class VendorProvider extends ChangeNotifier {
       contactPhone: contactPhone,
       contactEmail: contactEmail,
       description: description,
+      pricingPackages: pricingPackages,
     );
 
     bool success = false;
