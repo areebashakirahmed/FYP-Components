@@ -97,6 +97,7 @@ class VendorProvider extends ChangeNotifier {
   }
 
   /// Create vendor profile (Vendor only)
+  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
   Future<bool> createVendorProfile({
     required String token,
     required String businessName,
@@ -110,6 +111,16 @@ class VendorProvider extends ChangeNotifier {
     String? contactEmail,
     String? description,
     List<Map<String, dynamic>>? pricingPackages,
+    // New fields
+    String? whatsappNumber,
+    String? city,
+    String? area,
+    String? cnicNumber,
+    String? cnicFrontImage,
+    String? cnicBackImage,
+    Map<String, dynamic>? basicPackage,
+    Map<String, dynamic>? premiumPackage,
+    Map<String, dynamic>? luxuryPackage,
   }) async {
     _isLoading = true;
     _error = null;
@@ -128,6 +139,15 @@ class VendorProvider extends ChangeNotifier {
       contactEmail: contactEmail,
       description: description,
       pricingPackages: pricingPackages,
+      whatsappNumber: whatsappNumber,
+      city: city,
+      area: area,
+      cnicNumber: cnicNumber,
+      cnicFrontImage: cnicFrontImage,
+      cnicBackImage: cnicBackImage,
+      basicPackage: basicPackage,
+      premiumPackage: premiumPackage,
+      luxuryPackage: luxuryPackage,
     );
 
     bool success = false;
@@ -171,6 +191,7 @@ class VendorProvider extends ChangeNotifier {
   }
 
   /// Update vendor profile (Vendor only)
+  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
   Future<bool> updateVendorProfile({
     required String token,
     required String vendorId,
@@ -185,6 +206,16 @@ class VendorProvider extends ChangeNotifier {
     String? contactEmail,
     String? description,
     List<Map<String, dynamic>>? pricingPackages,
+    // New fields
+    String? whatsappNumber,
+    String? city,
+    String? area,
+    String? cnicNumber,
+    String? cnicFrontImage,
+    String? cnicBackImage,
+    Map<String, dynamic>? basicPackage,
+    Map<String, dynamic>? premiumPackage,
+    Map<String, dynamic>? luxuryPackage,
   }) async {
     _isLoading = true;
     _error = null;
@@ -204,6 +235,15 @@ class VendorProvider extends ChangeNotifier {
       contactEmail: contactEmail,
       description: description,
       pricingPackages: pricingPackages,
+      whatsappNumber: whatsappNumber,
+      city: city,
+      area: area,
+      cnicNumber: cnicNumber,
+      cnicFrontImage: cnicFrontImage,
+      cnicBackImage: cnicBackImage,
+      basicPackage: basicPackage,
+      premiumPackage: premiumPackage,
+      luxuryPackage: luxuryPackage,
     );
 
     bool success = false;
@@ -256,6 +296,57 @@ class VendorProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return success;
+  }
+
+  /// Upload CNIC images for verification (Vendor only)
+  /// Returns map with 'front' and 'back' URLs
+  Future<Map<String, String>?> uploadCnicImages({
+    required String token,
+    required String frontImagePath,
+    required String backImagePath,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final result = await _vendorService.uploadCnicImages(
+      token: token,
+      frontImagePath: frontImagePath,
+      backImagePath: backImagePath,
+    );
+
+    Map<String, String>? urls;
+    result.when(
+      success: (data) {
+        urls = data;
+        _error = null;
+      },
+      failure: (error) {
+        _error = error;
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+    return urls;
+  }
+
+  /// Upload a single file and get the URL
+  Future<String?> uploadFile({
+    required String token,
+    required String filePath,
+  }) async {
+    final result = await _vendorService.uploadFile(
+      token: token,
+      filePath: filePath,
+    );
+
+    String? url;
+    result.when(
+      success: (data) => url = data,
+      failure: (error) => _error = error,
+    );
+    return url;
   }
 
   /// Clear filters and search results

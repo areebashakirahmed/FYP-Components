@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/home/providers/home_provider.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
+import 'package:mehfilista/features/location/providers/location_provider.dart';
 import 'package:mehfilista/features/review/providers/review_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/services/local_provider.dart';
@@ -22,6 +23,9 @@ void main() {
 
         // Auth & User
         ChangeNotifierProvider(create: (_) => AuthProvider()..loadUser()),
+
+        // Location provider
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
 
         // Feature providers
         ChangeNotifierProvider(create: (_) => HomeProvider()),

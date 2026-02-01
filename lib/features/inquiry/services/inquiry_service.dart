@@ -6,31 +6,48 @@ import 'package:mehfilista/utils/api_result.dart';
 
 class InquiryService {
   /// Send inquiry to a vendor (User only)
+  /// Supports both old (preferred_date) and new (event_date, selected_package, number_of_guests) API
   Future<ApiResult<InquiryModel>> sendInquiry({
     required String token,
     required String vendorId,
     required String eventType,
-    required String preferredDate,
+    required String eventDate, // YYYY-MM-DD format
     required String message,
+    String? selectedPackage, // 'basic', 'premium', or 'luxury'
+    int? numberOfGuests,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'vendor_id': vendorId,
+        'event_type': eventType,
+        'event_date': eventDate,
+        'message': message,
+      };
+
+      // Add package selection if provided
+      if (selectedPackage != null) {
+        body['selected_package'] = selectedPackage;
+      }
+      if (numberOfGuests != null) {
+        body['number_of_guests'] = numberOfGuests;
+      }
+
       final response = await http.post(
         Uri.parse(ApiConstants.sendInquiry),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'vendor_id': vendorId,
-          'event_type': eventType,
-          'preferred_date': preferredDate,
-          'message': message,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return ApiResult.success(InquiryModel.fromJson(data));
+      } else if (response.statusCode == 403) {
+        return ApiResult.failure('Only user accounts can send inquiries');
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('Selected vendor not found');
       } else {
         return ApiResult.failure('Failed to send inquiry: ${response.body}');
       }

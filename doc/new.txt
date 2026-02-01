@@ -1,0 +1,740 @@
+# Mehfilista - Complete Flutter API Integration Guide
+
+**Server:** `http://localhost:9000` (update for production)
+
+This guide includes ALL features: location-based search, CNIC verification, approval workflow, pricing packages, and WhatsApp integration.
+
+---
+
+## 🎯 Quick Start Summary
+
+### User Flow:
+
+1. Get cities/areas → Register with location → Search vendors in area → View packages with cost calculator → Send inquiry → Chat on WhatsApp
+
+### Vendor Flow:
+
+1. Register → Upload CNIC → Set pricing packages → Wait for admin approval → Receive inquiries → Chat on WhatsApp
+
+---
+
+## 🔐 Authentication
+
+### Register User
+
+```dart
+POST /auth/register
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe",
+  "phone": "+923001234567",
+  "role": "user",
+  "city": "Karachi",      // REQUIRED
+  "area": "Gulshan"       // REQUIRED
+}
+
+Response: { access_token, token_type, user }
+```
+
+### Register Vendor
+
+Same endpoint, use `"role": "vendor"` (city/area optional for vendors)
+
+### Login
+
+```dart
+POST /auth/login
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+### Get Current User
+
+```dart
+GET /auth/me
+Headers: Authorization: Bearer {token}
+```
+
+---
+
+## 📍 Location Management
+
+### Get Cities with Areas (For Registration)
+
+```dart
+GET /locations/cities-with-areas?active_only=true
+
+Response:
+[
+  {
+    "id": "...",
+    "name": "Karachi",
+    "country": "Pakistan",
+    "is_active": true,
+    "areas": [
+      { "id": "...", "name": "Gulshan", "is_active": true },
+      { "id": "...", "name": "Clifton", "is_active": true }
+    ]
+  }
+]
+```
+
+**Flutter Implementation:**
+
+```dart
+// Load locations for registration form
+final response = await http.get(
+  Uri.parse('$baseUrl/locations/cities-with-areas?active_only=true')
+);
+final List cities = jsonDecode(response.body);
+
+// Build dropdowns
+List<DropdownMenuItem> cityItems = cities.map((city) => 
+  DropdownMenuItem(value: city['name'], child: Text(city['name']))
+).toList();
+
+// When city selected, show areas
+final selectedCityAreas = cities
+  .firstWhere((c) => c['name'] == selectedCity)['areas'];
+```
+
+---
+
+## 🏢 Vendor Management
+
+### Create Vendor Profile (With CNIC & Packages)
+
+```dart
+POST /vendors
+Auth: Required (Vendor role)
+
+{
+  "business_name": "Royal Photography",
+  "category": ["photography", "videography"],
+  "services": "Professional photography and videography for all events",
+  "city": "Karachi",
+  "area": "Gulshan",
+  "event_types": ["wedding", "engagement", "birthday"],
+  
+  // CNIC Verification (REQUIRED)
+  "cnic_number": "42101-1234567-1",
+  "cnic_front_image": "/uploads/cnic_front_xxx.jpg",
+  "cnic_back_image": "/uploads/cnic_back_xxx.jpg",
+  
+  // WhatsApp (REQUIRED)
+  "whatsapp_number": "+923001234567",
+  
+  // Pricing Packages (at least one required)
+  "basic_package": {
+    "description": "Basic photography package with 4 hours coverage",
+    "base_price": 50000.0,
+    "per_head_price": 500.0
+  },
+  "premium_package": {
+    "description": "Premium package with photography and videography",
+    "base_price": 100000.0,
+    "per_head_price": 800.0
+  },
+  "luxury_package": {
+    "description": "Luxury complete coverage with drone and album",
+    "base_price": 200000.0,
+    "per_head_price": 1200.0
+  },
+  
+  "availability": "active"  // or "inactive"
+}
+
+Response: Vendor profile with approval_status: "pending"
+```
+
+**Flutter Implementation:**
+
+```dart
+// Step 1: Upload CNIC images (create upload endpoint or use base64)
+// Assuming you have an upload endpoint
+var cnicFrontRequest = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
+cnicFrontRequest.files.add(await http.MultipartFile.fromPath('file', cnicFrontPath));
+var cnicFrontResponse = await cnicFrontRequest.send();
+final cnicFrontUrl = jsonDecode(await cnicFrontResponse.stream.bytesToString())['url'];
+
+// Same for back...
+
+// Step 2: Create vendor profile
+final response = await http.post(
+  Uri.parse('$baseUrl/vendors'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  },
+  body: jsonEncode({
+    'business_name': businessNameController.text,
+    'category': selectedCategories,
+    'services': servicesController.text,
+    'city': selectedCity,
+    'area': selectedArea,
+    'event_types': selectedEventTypes,
+    'cnic_number': cnicNumberController.text,  // Format: XXXXX-XXXXXXX-X
+    'cnic_front_image': cnicFrontUrl,
+    'cnic_back_image': cnicBackUrl,
+    'whatsapp_number': whatsappController.text,
+    'basic_package': {
+      'description': basicDescController.text,
+      'base_price': double.parse(basicBaseController.text),
+      'per_head_price': double.parse(basicPerHeadController.text),
+    },
+    'premium_package': { /* same structure */ },
+    'luxury_package': { /* same structure */ },
+    'availability': 'active',
+  }),
+);
+
+final vendor = jsonDecode(response.body);
+// Show message: "Your profile is pending admin approval"
+```
+
+### Get My Vendor Profile (Check Approval Status)
+
+```dart
+GET /vendors/me
+Auth: Required (Vendor role)
+
+Response:
+{
+  "id": "...",
+  "approval_status": "pending",  // or "approved" or "rejected"
+  "rejection_reason": null,      // Shows reason if rejected
+  ...
+}
+```
+
+**Flutter Implementation:**
+
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/vendors/me'),
+  headers: {'Authorization': 'Bearer $token'},
+);
+final vendor = jsonDecode(response.body);
+
+// Show appropriate UI based on status
+switch (vendor['approval_status']) {
+  case 'pending':
+    return Text('Your account is under review');
+  case 'approved':
+    return VendorDashboard(vendor);
+  case 'rejected':
+    return Column(
+      children: [
+        Text('Your application was rejected'),
+        Text('Reason: ${vendor['rejection_reason']}'),
+        ElevatedButton(
+          onPressed: () => updateVendorProfile(),
+          child: Text('Resubmit'),
+        ),
+      ],
+    );
+}
+```
+
+### Search Vendors (Location-Based)
+
+```dart
+GET /vendors/search?category=photography&location=Karachi&approved_only=true
+
+Query Params:
+- category: string
+- location: string (searches in city and area)
+- event_type: string
+- min_rating: number (1-5)
+- approved_only: boolean (default: true)
+
+Response:
+[
+  {
+    "id": "...",
+    "business_name": "Royal Photography",
+    "city": "Karachi",
+    "area": "Gulshan",
+    "approval_status": "approved",
+    "whatsapp_number": "+923001234567",
+    "basic_package": {
+      "description": "...",
+      "base_price": 50000.0,
+      "per_head_price": 500.0
+    },
+    "premium_package": { ... },
+    "luxury_package": { ... },
+    "average_rating": 4.5,
+    "total_reviews": 10,
+    ...
+  }
+]
+```
+
+**Flutter Implementation:**
+
+```dart
+final response = await http.get(
+  Uri.parse('$baseUrl/vendors/search?location=${userCity}&approved_only=true'),
+);
+final List vendors = jsonDecode(response.body);
+
+// Display vendor cards with:
+ListView.builder(
+  itemCount: vendors.length,
+  itemBuilder: (context, index) {
+    final vendor = vendors[index];
+    return VendorCard(
+      businessName: vendor['business_name'],
+      city: vendor['city'],
+      area: vendor['area'],
+      rating: vendor['average_rating'],
+      onTap: () => navigateToVendorDetails(vendor['id']),
+    );
+  },
+);
+```
+
+### Get Vendor Details
+
+```dart
+GET /vendors/{id}
+
+Response: Full vendor object with all packages
+```
+
+**Flutter Implementation - Cost Calculator:**
+
+```dart
+final vendor = jsonDecode(await http.get(Uri.parse('$baseUrl/vendors/$vendorId')).then((r) => r.body));
+
+// Display packages with cost calculator
+class PackageSelector extends StatefulWidget {
+  final Map vendor;
+  // ...
+}
+
+class _PackageSelectorState extends State<PackageSelector> {
+  String selectedPackage = 'basic';
+  int numberOfGuests = 100;
+
+  double calculateCost() {
+    final package = widget.vendor['${selectedPackage}_package'];
+    if (package == null) return 0.0;
+    return package['base_price'] + (package['per_head_price'] * numberOfGuests);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Package selector (Basic/Premium/Luxury)
+        SegmentedButton(
+          segments: [
+            ButtonSegment(value: 'basic', label: Text('Basic')),
+            ButtonSegment(value: 'premium', label: Text('Premium')),
+            ButtonSegment(value: 'luxury', label: Text('Luxury')),
+          ],
+          selected: {selectedPackage},
+          onSelectionChanged: (Set<String> selection) {
+            setState(() => selectedPackage = selection.first);
+          },
+        ),
+        
+        // Package details
+        Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(widget.vendor['${selectedPackage}_package']['description']),
+                SizedBox(height: 8),
+                Text('Base Price: PKR ${widget.vendor['${selectedPackage}_package']['base_price']}'),
+                Text('Per Head: PKR ${widget.vendor['${selectedPackage}_package']['per_head_price']}'),
+              ],
+            ),
+          ),
+        ),
+        
+        // Guest count selector
+        Row(
+          children: [
+            Text('Number of Guests:'),
+            Spacer(),
+            IconButton(
+              icon: Icon(Icons.remove),
+              onPressed: () => setState(() => numberOfGuests = max(1, numberOfGuests - 10)),
+            ),
+            Text('$numberOfGuests'),
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () => setState(() => numberOfGuests += 10),
+            ),
+          ],
+        ),
+        
+        // Total cost display
+        Container(
+          padding: EdgeInsets.all(16),
+          color: Colors.green[100],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Estimated Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('PKR ${calculateCost().toStringAsFixed(0)}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        
+        // Send inquiry button
+        ElevatedButton(
+          onPressed: () => sendInquiry(),
+          child: Text('Send Inquiry'),
+        ),
+      ],
+    );
+  }
+}
+```
+
+---
+
+## 📋 Inquiries (With Package Selection)
+
+### Send Inquiry
+
+```dart
+POST /inquiries
+Auth: Required (User role)
+
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "event_type": "wedding",
+  "event_date": "2024-06-15",           // YYYY-MM-DD format
+  "selected_package": "premium",        // "basic", "premium", or "luxury"
+  "number_of_guests": 200,
+  "message": "I need photography services for my wedding"
+}
+
+Response:
+{
+  "id": "...",
+  "vendor_id": "...",
+  "event_date": "2024-06-15",
+  "selected_package": "premium",
+  "number_of_guests": 200,
+  "estimated_cost": 160000.0,  // AUTO-CALCULATED!
+  "status": "pending",
+  ...
+}
+```
+
+**Flutter Implementation:**
+
+```dart
+Future<void> sendInquiry() async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/inquiries'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'vendor_id': vendorId,
+      'event_type': eventType,
+      'event_date': selectedDate.toString().split(' ')[0],  // YYYY-MM-DD
+      'selected_package': selectedPackage,
+      'number_of_guests': numberOfGuests,
+      'message': messageController.text,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    final inquiry = jsonDecode(response.body);
+    // Show success message with estimated cost
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Inquiry Sent!'),
+        content: Text('Estimated Cost: PKR ${inquiry['estimated_cost']}'),
+        actions: [
+          TextButton(
+            onPressed: () => openWhatsApp(vendor['whatsapp_number']),
+            child: Text('Chat on WhatsApp'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+### Get My Inquiries (User)
+
+```dart
+GET /inquiries/me
+Auth: Required (User role)
+
+Response: List of inquiries with estimated_cost
+```
+
+### Get Vendor Inquiries (Vendor)
+
+```dart
+GET /inquiries/vendor/me
+Auth: Required (Vendor role)
+
+Response: List of inquiries received
+```
+
+---
+
+## 💬 WhatsApp Integration
+
+**No API endpoint - Direct link**
+
+```dart
+Future<void> openWhatsApp(String whatsappNumber) async {
+  // Remove + and spaces from number
+  final cleanNumber = whatsappNumber.replaceAll(RegExp(r'[^\d]'), '');
+  
+  final message = Uri.encodeComponent(
+    "Hi! I'm interested in your services for my event."
+  );
+  
+  final whatsappUrl = "https://wa.me/$cleanNumber?text=$message";
+  
+  if (await canLaunch(whatsappUrl)) {
+    await launch(whatsappUrl);
+  } else {
+    // Show error
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open WhatsApp')),
+    );
+  }
+}
+
+// Use in vendor details page:
+FloatingActionButton(
+  onPressed: () => openWhatsApp(vendor['whatsapp_number']),
+  child: Icon(Icons.chat),
+  backgroundColor: Colors.green,
+  label: Text('Chat on WhatsApp'),
+);
+```
+
+---
+
+## ⭐ Reviews
+
+### Leave Review
+
+```dart
+POST /reviews
+Auth: Required (User role)
+
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "rating": 5,
+  "comment": "Excellent service!"
+}
+```
+
+### Get Vendor Reviews
+
+```dart
+GET /reviews/vendor/{vendor_id}
+Auth: Not required
+```
+
+---
+
+## 🏠 Homepage
+
+### Get Recommendations
+
+```dart
+GET /home/recommendations
+
+Response:
+{
+  "featured_vendors": [...],
+  "popular_categories": [...],
+  "recent_vendors": [...],
+  "statistics": {
+    "total_vendors": 50,
+    "total_reviews": 120,
+    "total_events_booked": 45
+  }
+}
+```
+
+---
+
+## 🔐 Token Management
+
+```dart
+// Use flutter_secure_storage
+final storage = FlutterSecureStorage();
+
+// After login/register
+await storage.write(key: 'auth_token', value: token);
+await storage.write(key: 'user_id', value: userId);
+await storage.write(key: 'user_role', value: role);
+
+// For API calls
+final token = await storage.read(key: 'auth_token');
+final headers = {
+  'Authorization': 'Bearer $token',
+  'Content-Type': 'application/json',
+};
+
+// Logout
+await storage.deleteAll();
+```
+
+---
+
+## ✅ Implementation Checklist
+
+### User Features:
+
+- [ ] Location selection (city/area) during registration
+
+- [ ] Location-based vendor search
+
+- [ ] View vendor packages (Basic/Premium/Luxury)
+
+- [ ] Cost calculator (base + per-head × guests)
+
+- [ ] Send inquiry with package selection
+
+- [ ] View inquiries with estimated costs
+
+- [ ] WhatsApp "Chat with Vendor" button
+
+- [ ] Leave reviews
+
+### Vendor Features:
+
+- [ ] CNIC upload (front & back)
+
+- [ ] CNIC number input with format validation
+
+- [ ] Set pricing packages (3 tiers)
+
+- [ ] WhatsApp number input
+
+- [ ] Approval status indicator
+
+- [ ] Handle rejection with reason display
+
+- [ ] View received inquiries
+
+- [ ] Portfolio image upload
+
+- [ ] Toggle availability (active/inactive)
+
+### General:
+
+- [ ] Secure token storage
+
+- [ ] Error handling
+
+- [ ] Loading states
+
+- [ ] Offline handling
+
+- [ ] Image caching
+
+---
+
+## 📝 Important Notes
+
+### CNIC Format:
+
+- Format: `XXXXX-XXXXXXX-X` (e.g., `42101-1234567-1`)
+- Validate before submission
+
+### Approval States:
+
+- **pending**: Show "Under review" message
+- **approved**: Enable full vendor features
+- **rejected**: Show reason + resubmit option
+
+### Cost Calculation:
+
+```dart
+totalCost = basePrice + (perHeadPrice × numberOfGuests)
+```
+
+### Date Format:
+
+- Always use `YYYY-MM-DD` for event_date
+- Use `DateFormat` from `intl` package
+
+### WhatsApp Numbers:
+
+- Store with country code: `+923001234567`
+- Clean before opening: remove `+` and spaces
+
+---
+
+## 🎯 Complete User Journey Example
+
+```dart
+// 1. User opens app
+// 2. Fetch locations for registration
+final locations = await fetchLocations();
+
+// 3. User registers with city/area
+await register(email, password, name, phone, 'user', selectedCity, selectedArea);
+
+// 4. User searches vendors in their area
+final vendors = await searchVendors(location: selectedCity);
+
+// 5. User views vendor, sees packages
+final vendor = await getVendorDetails(vendorId);
+
+// 6. User selects package, enters guests, sees cost
+final estimatedCost = vendor['premium_package']['base_price'] +
+  (vendor['premium_package']['per_head_price'] * 200);
+
+// 7. User sends inquiry
+await sendInquiry(
+  vendorId: vendorId,
+  eventType: 'wedding',
+  eventDate: '2024-06-15',
+  selectedPackage: 'premium',
+  numberOfGuests: 200,
+  message: 'Interested in your services',
+);
+
+// 8. User clicks "Chat on WhatsApp"
+await openWhatsApp(vendor['whatsapp_number']);
+```
+
+---
+
+## 🚀 Production Deployment
+
+Update base URL:
+
+```dart
+const String baseUrl = kDebugMode 
+  ? 'http://localhost:9000' 
+  : 'https://api.mehfilista.com';
+```
+
+---
+
+**End of Guide**

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/auth/views/login_screen.dart';
+import 'package:mehfilista/features/location/providers/location_provider.dart';
 import 'package:mehfilista/features/main_shell.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
@@ -23,7 +24,6 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController cityController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
@@ -31,10 +31,18 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Load cities when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<LocationProvider>().loadCities();
+    });
+  }
+
+  @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    cityController.dispose();
     phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
@@ -50,12 +58,16 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     final authProvider = context.read<AuthProvider>();
+    final locationProvider = context.read<LocationProvider>();
+
     final success = await authProvider.register(
       emailController.text.trim(),
       passwordController.text,
       nameController.text.trim(),
       phoneController.text.trim(),
       widget.role,
+      city: locationProvider.selectedCity,
+      area: locationProvider.selectedArea,
     );
 
     if (success && mounted) {
@@ -119,11 +131,123 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
 
                   SizedBox(height: 20.h),
-                  CustomTextfield(
-                    hintText: "City Name",
-                    heading: "City",
-                    controller: cityController,
-                    validator: Validators.validateCity,
+                  // City and Area Selection
+                  Consumer<LocationProvider>(
+                    builder: (context, locationProvider, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // City Dropdown
+                          Text(
+                            'City',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.black,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: locationProvider.isLoading
+                                ? Padding(
+                                    padding: EdgeInsets.all(16.w),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20.w,
+                                        height: 20.h,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : DropdownButtonFormField<String>(
+                                    value: locationProvider.selectedCity,
+                                    decoration: InputDecoration(
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16.w,
+                                        vertical: 12.h,
+                                      ),
+                                      border: InputBorder.none,
+                                      hintText: 'Select your city',
+                                    ),
+                                    items: locationProvider.cityNames.map((
+                                      cityName,
+                                    ) {
+                                      return DropdownMenuItem(
+                                        value: cityName,
+                                        child: Text(cityName),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        locationProvider.selectCity(value);
+                                      }
+                                    },
+                                    validator: (value) {
+                                      if (value == null) {
+                                        return 'Please select a city';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                          ),
+
+                          // Area Dropdown (shows when city is selected)
+                          if (locationProvider.selectedCity != null &&
+                              locationProvider
+                                  .areasForSelectedCity
+                                  .isNotEmpty) ...[
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Area',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.black,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8.r),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: locationProvider.selectedArea,
+                                decoration: InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16.w,
+                                    vertical: 12.h,
+                                  ),
+                                  border: InputBorder.none,
+                                  hintText: 'Select your area',
+                                ),
+                                items: locationProvider.areaNames.map((
+                                  areaName,
+                                ) {
+                                  return DropdownMenuItem(
+                                    value: areaName,
+                                    child: Text(areaName),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    locationProvider.selectArea(value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
 
                   SizedBox(height: 20.h),

@@ -8,6 +8,9 @@ class ApiConstants {
   static const String updateProfile = '$baseUrl/auth/profile';
   static const String resetPassword = '$baseUrl/auth/reset-password';
 
+  // Location endpoints
+  static const String citiesWithAreas = '$baseUrl/locations/cities-with-areas';
+
   // Home endpoints
   static const String homeRecommendations = '$baseUrl/home/recommendations';
   static const String homeCategories = '$baseUrl/home/categories';
@@ -20,6 +23,7 @@ class ApiConstants {
   static const String myVendor = '$baseUrl/vendors/me';
   static String updateVendor(String id) => '$baseUrl/vendors/$id';
   static String uploadPortfolio(String id) => '$baseUrl/vendors/$id/portfolio';
+  static const String uploadFile = '$baseUrl/upload';
 
   // Inquiries
   static const String sendInquiry = '$baseUrl/inquiries';

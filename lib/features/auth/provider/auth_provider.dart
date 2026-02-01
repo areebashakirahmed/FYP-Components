@@ -56,8 +56,10 @@ class AuthProvider extends ChangeNotifier {
     String password,
     String name,
     String phone,
-    String role,
-  ) async {
+    String role, {
+    String? city,
+    String? area,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -69,6 +71,8 @@ class AuthProvider extends ChangeNotifier {
         name,
         phone,
         role,
+        city: city,
+        area: area,
       );
 
       // Validate response data (API returns access_token, not token)
@@ -143,7 +147,11 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final updatedUser = await _authServices.updateProfile(_token!, name, phone);
+      final updatedUser = await _authServices.updateProfile(
+        _token!,
+        name,
+        phone,
+      );
       _user = updatedUser;
       await _userStorage.saveUser(_user!);
 

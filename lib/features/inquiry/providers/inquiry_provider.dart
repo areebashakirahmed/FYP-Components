@@ -31,12 +31,15 @@ class InquiryProvider extends ChangeNotifier {
       .toList();
 
   /// Send inquiry to vendor (User only)
+  /// Supports package selection and guest count for cost calculation
   Future<bool> sendInquiry({
     required String token,
     required String vendorId,
     required String eventType,
-    required String preferredDate,
+    required String eventDate, // YYYY-MM-DD format
     required String message,
+    String? selectedPackage, // 'basic', 'premium', or 'luxury'
+    int? numberOfGuests,
   }) async {
     _isLoading = true;
     _error = null;
@@ -46,8 +49,10 @@ class InquiryProvider extends ChangeNotifier {
       token: token,
       vendorId: vendorId,
       eventType: eventType,
-      preferredDate: preferredDate,
+      eventDate: eventDate,
       message: message,
+      selectedPackage: selectedPackage,
+      numberOfGuests: numberOfGuests,
     );
 
     bool success = false;

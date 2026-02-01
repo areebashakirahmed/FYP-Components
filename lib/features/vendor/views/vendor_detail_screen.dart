@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:mehfilista/components/cost_calculator_widget.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/inquiry/models/inquiry_model.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
 import 'package:mehfilista/features/review/providers/review_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
+import 'package:mehfilista/utils/helpers/whatsapp_helper.dart';
 import 'package:mehfilista/utils/validators.dart';
 import 'package:provider/provider.dart';
 
@@ -52,14 +54,15 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     final eventTypeController = TextEditingController();
     final dateController = TextEditingController();
     final locationController = TextEditingController();
-    final guestCountController = TextEditingController();
+    final guestCountController = TextEditingController(text: '100');
     final messageController = TextEditingController();
-    DateTime? selectedDate;
     String? selectedPackage;
+    int numberOfGuests = 100;
+    double estimatedCost = 0;
     final formKey = GlobalKey<FormState>();
 
-    // Get packages from vendor if available
-    final packages = vendor?.pricingPackages ?? [];
+    // Check if vendor has new pricing tiers
+    final hasNewPricing = vendor?.hasPricingTiers ?? false;
 
     showModalBottomSheet(
       context: context,
@@ -107,12 +110,12 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       ),
                       SizedBox(height: 12.h),
 
-                      // Preferred Date
+                      // Event Date (required in new API)
                       TextFormField(
                         controller: dateController,
                         readOnly: true,
                         decoration: InputDecoration(
-                          labelText: 'Preferred Date *',
+                          labelText: 'Event Date *',
                           hintText: 'Select date',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.r),
@@ -131,7 +134,6 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             lastDate: DateTime.now().add(Duration(days: 365)),
                           );
                           if (date != null) {
-                            selectedDate = date;
                             dateController.text =
                                 '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
                           }
@@ -154,51 +156,45 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       ),
                       SizedBox(height: 12.h),
 
-                      // Guest Count
-                      TextFormField(
-                        controller: guestCountController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Expected Guests',
-                          hintText: 'Number of guests',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+                      // New pricing tier selection with cost calculator
+                      if (hasNewPricing && vendor != null) ...[
+                        Text(
+                          'Select Package & Guests',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
                           ),
-                          prefixIcon: Icon(Icons.people_outline),
                         ),
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            return Validators.validateGuestCount(value);
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // Package Selection (if vendor has packages)
-                      if (packages.isNotEmpty) ...[
-                        DropdownButtonFormField<String>(
-                          value: selectedPackage,
+                        SizedBox(height: 12.h),
+                        CostCalculatorWidget(
+                          vendor: vendor,
+                          initialGuests: numberOfGuests,
+                          onCostChanged: (packageType, guests, cost) {
+                            setSheetState(() {
+                              selectedPackage = packageType;
+                              numberOfGuests = guests;
+                              estimatedCost = cost;
+                              guestCountController.text = guests.toString();
+                            });
+                          },
+                        ),
+                        SizedBox(height: 12.h),
+                      ] else ...[
+                        // Legacy guest count field
+                        TextFormField(
+                          controller: guestCountController,
+                          keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Select Package',
+                            labelText: 'Expected Guests *',
+                            hintText: 'Number of guests',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.r),
                             ),
+                            prefixIcon: Icon(Icons.people_outline),
                           ),
-                          items: [
-                            DropdownMenuItem(
-                              value: null,
-                              child: Text('No specific package'),
-                            ),
-                            ...packages.map(
-                              (pkg) => DropdownMenuItem(
-                                value: pkg.name,
-                                child: Text('${pkg.name} - ${pkg.price}'),
-                              ),
-                            ),
-                          ],
+                          validator: Validators.validateGuestCount,
                           onChanged: (value) {
-                            setSheetState(() => selectedPackage = value);
+                            numberOfGuests = int.tryParse(value) ?? 100;
                           },
                         ),
                         SizedBox(height: 12.h),
@@ -221,6 +217,39 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       ),
                       SizedBox(height: 20.h),
 
+                      // Estimated Cost Display (if new pricing)
+                      if (hasNewPricing && estimatedCost > 0) ...[
+                        Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Estimated Cost:',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                'Rs. ${estimatedCost.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                      ],
+
                       // Submit Button
                       Consumer<InquiryProvider>(
                         builder: (context, inquiryProvider, _) {
@@ -241,23 +270,26 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                         return;
                                       }
 
-                                      // Build detailed message with all fields
+                                      // Build detailed message with location
                                       final detailedMessage =
                                           _buildInquiryMessage(
                                             message: messageController.text,
                                             location: locationController.text,
-                                            guestCount:
-                                                guestCountController.text,
+                                            guestCount: numberOfGuests
+                                                .toString(),
                                             selectedPackage: selectedPackage,
                                           );
 
+                                      // Use new API with package selection
                                       final success = await inquiryProvider
                                           .sendInquiry(
                                             token: authProvider.token ?? '',
                                             vendorId: widget.vendorId,
                                             eventType: eventTypeController.text,
-                                            preferredDate: dateController.text,
+                                            eventDate: dateController.text,
                                             message: detailedMessage,
+                                            selectedPackage: selectedPackage,
+                                            numberOfGuests: numberOfGuests,
                                           );
 
                                       if (success && context.mounted) {
@@ -552,6 +584,10 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
       return;
     }
 
+    // Determine which number to use for WhatsApp
+    final whatsappNumber = vendor?.whatsappNumber ?? vendor?.contactPhone;
+    final hasWhatsApp = WhatsAppHelper.isValidWhatsAppNumber(whatsappNumber);
+
     // Show chat/contact options dialog
     showModalBottomSheet(
       context: context,
@@ -569,6 +605,32 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 20.h),
+
+              // WhatsApp Option (prioritized if available)
+              if (hasWhatsApp)
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.shade700.withOpacity(0.1),
+                    child: Icon(Icons.chat, color: Colors.green.shade700),
+                  ),
+                  title: Text('WhatsApp'),
+                  subtitle: Text(
+                    WhatsAppHelper.formatPhoneNumber(whatsappNumber!),
+                  ),
+                  trailing: Icon(Icons.open_in_new, size: 18.sp),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final success = await WhatsAppHelper.openVendorChat(
+                      phoneNumber: whatsappNumber,
+                      vendorName: vendor?.businessName,
+                    );
+                    if (!success) {
+                      Fluttertoast.showToast(
+                        msg: 'Could not open WhatsApp. Please try again.',
+                      );
+                    }
+                  },
+                ),
 
               // Phone Option
               if (vendor?.contactPhone != null &&
@@ -601,23 +663,6 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     Navigator.pop(context);
                     Fluttertoast.showToast(msg: 'Opening email app...');
                     // In production, use url_launcher to send email
-                  },
-                ),
-
-              // WhatsApp Option (if phone exists)
-              if (vendor?.contactPhone != null &&
-                  vendor!.contactPhone!.isNotEmpty)
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green.shade700.withOpacity(0.1),
-                    child: Icon(Icons.chat, color: Colors.green.shade700),
-                  ),
-                  title: Text('WhatsApp'),
-                  subtitle: Text('Chat on WhatsApp'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Fluttertoast.showToast(msg: 'Opening WhatsApp...');
-                    // In production, use url_launcher to open WhatsApp
                   },
                 ),
 
@@ -779,16 +824,54 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             color: Colors.grey,
                           ),
                           SizedBox(width: 4.w),
-                          Text(
-                            vendor.location,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.grey[600],
+                          Expanded(
+                            child: Text(
+                              vendor.city != null && vendor.area != null
+                                  ? '${vendor.area}, ${vendor.city}'
+                                  : vendor.location,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ),
                         ],
                       ),
                       SizedBox(height: 16.h),
+
+                      // Quick WhatsApp Button (if available)
+                      if (WhatsAppHelper.isValidWhatsAppNumber(
+                        vendor.whatsappNumber ?? vendor.contactPhone,
+                      ))
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16.h),
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              side: BorderSide(color: Colors.green.shade700),
+                              padding: EdgeInsets.symmetric(
+                                vertical: 10.h,
+                                horizontal: 16.w,
+                              ),
+                            ),
+                            onPressed: () async {
+                              final success =
+                                  await WhatsAppHelper.openVendorChat(
+                                    phoneNumber:
+                                        vendor.whatsappNumber ??
+                                        vendor.contactPhone!,
+                                    vendorName: vendor.businessName,
+                                  );
+                              if (!success) {
+                                Fluttertoast.showToast(
+                                  msg: 'Could not open WhatsApp',
+                                );
+                              }
+                            },
+                            icon: Icon(Icons.chat, size: 20.sp),
+                            label: Text('Chat on WhatsApp'),
+                          ),
+                        ),
 
                       // Categories
                       Wrap(
@@ -832,8 +915,19 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       _buildSection('Pricing', vendor.pricing),
                       SizedBox(height: 16.h),
 
-                      // Pricing Packages
-                      if (vendor.pricingPackages.isNotEmpty) ...[
+                      // New Pricing Tiers (if available)
+                      if (vendor.hasPricingTiers) ...[
+                        Text(
+                          'Pricing Packages',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        CostCalculatorWidget(vendor: vendor),
+                        SizedBox(height: 16.h),
+                      ] else if (vendor.pricingPackages.isNotEmpty) ...[
                         Text(
                           'Pricing Packages',
                           style: TextStyle(

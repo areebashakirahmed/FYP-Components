@@ -65,6 +65,7 @@ class VendorService {
   }
 
   /// Create vendor profile (Vendor only)
+  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
   Future<ApiResult<VendorModel>> createVendor({
     required String token,
     required String businessName,
@@ -78,6 +79,16 @@ class VendorService {
     String? contactEmail,
     String? description,
     List<Map<String, dynamic>>? pricingPackages,
+    // New fields
+    String? whatsappNumber,
+    String? city,
+    String? area,
+    String? cnicNumber,
+    String? cnicFrontImage,
+    String? cnicBackImage,
+    Map<String, dynamic>? basicPackage,
+    Map<String, dynamic>? premiumPackage,
+    Map<String, dynamic>? luxuryPackage,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -97,6 +108,37 @@ class VendorService {
       }
       if (description != null && description.isNotEmpty) {
         body['description'] = description;
+      }
+      if (pricingPackages != null && pricingPackages.isNotEmpty) {
+        body['pricing_packages'] = pricingPackages;
+      }
+      // New fields
+      if (whatsappNumber != null && whatsappNumber.isNotEmpty) {
+        body['whatsapp_number'] = whatsappNumber;
+      }
+      if (city != null && city.isNotEmpty) {
+        body['city'] = city;
+      }
+      if (area != null && area.isNotEmpty) {
+        body['area'] = area;
+      }
+      if (cnicNumber != null && cnicNumber.isNotEmpty) {
+        body['cnic_number'] = cnicNumber;
+      }
+      if (cnicFrontImage != null && cnicFrontImage.isNotEmpty) {
+        body['cnic_front_image'] = cnicFrontImage;
+      }
+      if (cnicBackImage != null && cnicBackImage.isNotEmpty) {
+        body['cnic_back_image'] = cnicBackImage;
+      }
+      if (basicPackage != null) {
+        body['basic_package'] = basicPackage;
+      }
+      if (premiumPackage != null) {
+        body['premium_package'] = premiumPackage;
+      }
+      if (luxuryPackage != null) {
+        body['luxury_package'] = luxuryPackage;
       }
       if (pricingPackages != null && pricingPackages.isNotEmpty) {
         body['pricing_packages'] = pricingPackages;
@@ -147,6 +189,7 @@ class VendorService {
   }
 
   /// Update vendor profile (Vendor only)
+  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
   Future<ApiResult<VendorModel>> updateVendor({
     required String token,
     required String vendorId,
@@ -161,6 +204,16 @@ class VendorService {
     String? contactEmail,
     String? description,
     List<Map<String, dynamic>>? pricingPackages,
+    // New fields
+    String? whatsappNumber,
+    String? city,
+    String? area,
+    String? cnicNumber,
+    String? cnicFrontImage,
+    String? cnicBackImage,
+    Map<String, dynamic>? basicPackage,
+    Map<String, dynamic>? premiumPackage,
+    Map<String, dynamic>? luxuryPackage,
   }) async {
     try {
       final body = <String, dynamic>{};
@@ -175,6 +228,16 @@ class VendorService {
       if (contactEmail != null) body['contact_email'] = contactEmail;
       if (description != null) body['description'] = description;
       if (pricingPackages != null) body['pricing_packages'] = pricingPackages;
+      // New fields
+      if (whatsappNumber != null) body['whatsapp_number'] = whatsappNumber;
+      if (city != null) body['city'] = city;
+      if (area != null) body['area'] = area;
+      if (cnicNumber != null) body['cnic_number'] = cnicNumber;
+      if (cnicFrontImage != null) body['cnic_front_image'] = cnicFrontImage;
+      if (cnicBackImage != null) body['cnic_back_image'] = cnicBackImage;
+      if (basicPackage != null) body['basic_package'] = basicPackage;
+      if (premiumPackage != null) body['premium_package'] = premiumPackage;
+      if (luxuryPackage != null) body['luxury_package'] = luxuryPackage;
 
       final response = await http.put(
         Uri.parse(ApiConstants.updateVendor(vendorId)),
@@ -239,6 +302,75 @@ class VendorService {
       }
     } catch (e) {
       return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Upload a file and get the URL (generic upload)
+  Future<ApiResult<String>> uploadFile({
+    required String token,
+    required String filePath,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConstants.uploadFile),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+
+      final file = await http.MultipartFile.fromPath('file', filePath);
+      request.files.add(file);
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final fileUrl = data['url'] ?? data['file_url'] ?? '';
+        return ApiResult.success(fileUrl);
+      } else {
+        return ApiResult.failure('Failed to upload file: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Upload CNIC images for verification (Vendor only)
+  Future<ApiResult<Map<String, String>>> uploadCnicImages({
+    required String token,
+    required String frontImagePath,
+    required String backImagePath,
+  }) async {
+    try {
+      // Upload front image
+      final frontResult = await uploadFile(
+        token: token,
+        filePath: frontImagePath,
+      );
+      String? frontUrl;
+      frontResult.when(
+        success: (url) => frontUrl = url,
+        failure: (error) => throw Exception('Front image: $error'),
+      );
+
+      // Upload back image
+      final backResult = await uploadFile(
+        token: token,
+        filePath: backImagePath,
+      );
+      String? backUrl;
+      backResult.when(
+        success: (url) => backUrl = url,
+        failure: (error) => throw Exception('Back image: $error'),
+      );
+
+      if (frontUrl != null && backUrl != null) {
+        return ApiResult.success({'front': frontUrl!, 'back': backUrl!});
+      } else {
+        return ApiResult.failure('Failed to upload CNIC images');
+      }
+    } catch (e) {
+      return ApiResult.failure('Error uploading CNIC: $e');
     }
   }
 }
