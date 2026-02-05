@@ -45,12 +45,44 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
       return;
     }
 
-    final packagesJson = _packages.map((p) => p.toJson()).toList();
+    // Convert packages list to individual tier packages for the backend
+    // Backend expects: basicPackage, premiumPackage, luxuryPackage
+    // Each with: description (min 10), base_price (>0), per_head_price (>0)
+    Map<String, dynamic>? basicPackage;
+    Map<String, dynamic>? premiumPackage;
+    Map<String, dynamic>? luxuryPackage;
+
+    for (final pkg in _packages) {
+      final tierMap = {
+        'description': pkg.description.isNotEmpty
+            ? pkg.description
+            : 'Package details',
+        'base_price':
+            double.tryParse(pkg.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0,
+        'per_head_price': 0,
+      };
+      final name = pkg.name.toLowerCase();
+      if (name.contains('basic')) {
+        basicPackage = tierMap;
+      } else if (name.contains('premium')) {
+        premiumPackage = tierMap;
+      } else if (name.contains('luxury') || name.contains('gold')) {
+        luxuryPackage = tierMap;
+      } else if (basicPackage == null) {
+        basicPackage = tierMap;
+      } else if (premiumPackage == null) {
+        premiumPackage = tierMap;
+      } else {
+        luxuryPackage = tierMap;
+      }
+    }
 
     final success = await vendorProvider.updateVendorProfile(
       token: token,
       vendorId: vendorId,
-      pricingPackages: packagesJson,
+      basicPackage: basicPackage,
+      premiumPackage: premiumPackage,
+      luxuryPackage: luxuryPackage,
     );
 
     setState(() => _isLoading = false);

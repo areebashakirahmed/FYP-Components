@@ -97,30 +97,26 @@ class VendorProvider extends ChangeNotifier {
   }
 
   /// Create vendor profile (Vendor only)
-  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
+  /// Create vendor profile matching backend VendorCreate schema
   Future<bool> createVendorProfile({
     required String token,
     required String businessName,
     required List<String> category,
     required String services,
-    required String location,
+    required String city,
+    required String area,
     required List<String> eventTypes,
-    required String pricing,
-    required String availability,
-    String? contactPhone,
-    String? contactEmail,
-    String? description,
-    List<Map<String, dynamic>>? pricingPackages,
-    // New fields
-    String? whatsappNumber,
-    String? city,
-    String? area,
-    String? cnicNumber,
-    String? cnicFrontImage,
-    String? cnicBackImage,
+    required String cnicNumber,
+    required String cnicFrontImage,
+    required String cnicBackImage,
+    required String whatsappNumber,
     Map<String, dynamic>? basicPackage,
     Map<String, dynamic>? premiumPackage,
     Map<String, dynamic>? luxuryPackage,
+    String availability = 'active',
+    String? contactPhone,
+    String? contactEmail,
+    String? description,
   }) async {
     _isLoading = true;
     _error = null;
@@ -131,23 +127,20 @@ class VendorProvider extends ChangeNotifier {
       businessName: businessName,
       category: category,
       services: services,
-      location: location,
+      city: city,
+      area: area,
       eventTypes: eventTypes,
-      pricing: pricing,
+      cnicNumber: cnicNumber,
+      cnicFrontImage: cnicFrontImage,
+      cnicBackImage: cnicBackImage,
+      whatsappNumber: whatsappNumber,
+      basicPackage: basicPackage,
+      premiumPackage: premiumPackage,
+      luxuryPackage: luxuryPackage,
       availability: availability,
       contactPhone: contactPhone,
       contactEmail: contactEmail,
       description: description,
-      pricingPackages: pricingPackages,
-      whatsappNumber: whatsappNumber,
-      city: city,
-      area: area,
-      cnicNumber: cnicNumber,
-      cnicFrontImage: cnicFrontImage,
-      cnicBackImage: cnicBackImage,
-      basicPackage: basicPackage,
-      premiumPackage: premiumPackage,
-      luxuryPackage: luxuryPackage,
     );
 
     bool success = false;
@@ -190,32 +183,21 @@ class VendorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update vendor profile (Vendor only)
-  /// Supports new API fields: CNIC, WhatsApp, pricing tiers, city/area
+  /// Update vendor profile matching backend VendorUpdate schema
   Future<bool> updateVendorProfile({
     required String token,
     required String vendorId,
     String? businessName,
     List<String>? category,
     String? services,
-    String? location,
-    List<String>? eventTypes,
-    String? pricing,
-    String? availability,
-    String? contactPhone,
-    String? contactEmail,
-    String? description,
-    List<Map<String, dynamic>>? pricingPackages,
-    // New fields
-    String? whatsappNumber,
     String? city,
     String? area,
-    String? cnicNumber,
-    String? cnicFrontImage,
-    String? cnicBackImage,
+    List<String>? eventTypes,
+    String? whatsappNumber,
     Map<String, dynamic>? basicPackage,
     Map<String, dynamic>? premiumPackage,
     Map<String, dynamic>? luxuryPackage,
+    String? availability,
   }) async {
     _isLoading = true;
     _error = null;
@@ -227,23 +209,14 @@ class VendorProvider extends ChangeNotifier {
       businessName: businessName,
       category: category,
       services: services,
-      location: location,
-      eventTypes: eventTypes,
-      pricing: pricing,
-      availability: availability,
-      contactPhone: contactPhone,
-      contactEmail: contactEmail,
-      description: description,
-      pricingPackages: pricingPackages,
-      whatsappNumber: whatsappNumber,
       city: city,
       area: area,
-      cnicNumber: cnicNumber,
-      cnicFrontImage: cnicFrontImage,
-      cnicBackImage: cnicBackImage,
+      eventTypes: eventTypes,
+      whatsappNumber: whatsappNumber,
       basicPackage: basicPackage,
       premiumPackage: premiumPackage,
       luxuryPackage: luxuryPackage,
+      availability: availability,
     );
 
     bool success = false;

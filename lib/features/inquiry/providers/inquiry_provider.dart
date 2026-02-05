@@ -31,15 +31,15 @@ class InquiryProvider extends ChangeNotifier {
       .toList();
 
   /// Send inquiry to vendor (User only)
-  /// Supports package selection and guest count for cost calculation
+  /// Matches backend InquiryCreate schema - all fields required
   Future<bool> sendInquiry({
     required String token,
     required String vendorId,
     required String eventType,
     required String eventDate, // YYYY-MM-DD format
-    required String message,
-    String? selectedPackage, // 'basic', 'premium', or 'luxury'
-    int? numberOfGuests,
+    required String selectedPackage, // must match ^(basic|premium|luxury)$
+    required int numberOfGuests, // must be > 0
+    required String message, // min_length=10
   }) async {
     _isLoading = true;
     _error = null;
@@ -50,9 +50,9 @@ class InquiryProvider extends ChangeNotifier {
       vendorId: vendorId,
       eventType: eventType,
       eventDate: eventDate,
-      message: message,
       selectedPackage: selectedPackage,
       numberOfGuests: numberOfGuests,
+      message: message,
     );
 
     bool success = false;

@@ -1,14 +1,14 @@
 /// Validation utilities for form fields
+/// Matches backend API validation rules exactly
 class Validators {
   // Private constructor to prevent instantiation
   Validators._();
 
-  /// Validates email format
+  /// Validates email format (backend: EmailStr)
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your email';
     }
-    // More comprehensive email regex
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
@@ -19,7 +19,7 @@ class Validators {
   }
 
   /// Validates phone number (Pakistani format)
-  /// Accepts formats: 03001234567, +923001234567, 3001234567
+  /// Backend: string, required, no regex enforced
   static String? validatePhone(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your phone number';
@@ -30,10 +30,10 @@ class Validators {
 
     // Pakistani phone number patterns
     final patterns = [
-      RegExp(r'^0[3][0-9]{9}$'), // 03001234567 (11 digits starting with 03)
-      RegExp(r'^\+92[3][0-9]{9}$'), // +923001234567 (13 chars with +92)
-      RegExp(r'^92[3][0-9]{9}$'), // 923001234567 (12 digits with 92)
-      RegExp(r'^[3][0-9]{9}$'), // 3001234567 (10 digits starting with 3)
+      RegExp(r'^0[3][0-9]{9}$'), // 03001234567
+      RegExp(r'^\+92[3][0-9]{9}$'), // +923001234567
+      RegExp(r'^92[3][0-9]{9}$'), // 923001234567
+      RegExp(r'^[3][0-9]{9}$'), // 3001234567
     ];
 
     final isValid = patterns.any((pattern) => pattern.hasMatch(cleaned));
@@ -55,7 +55,7 @@ class Validators {
     return null;
   }
 
-  /// Validates password
+  /// Validates password (backend: min_length=6)
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -77,7 +77,7 @@ class Validators {
     return null;
   }
 
-  /// Validates name
+  /// Validates name (backend: min_length=2)
   static String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter your name';
@@ -88,10 +88,88 @@ class Validators {
     if (value.trim().length > 50) {
       return 'Name must be less than 50 characters';
     }
-    // Only allow letters, spaces, and common name characters
-    final nameRegex = RegExp(r"^[a-zA-Z\s\.\-']+$");
-    if (!nameRegex.hasMatch(value.trim())) {
-      return 'Name can only contain letters, spaces, and hyphens';
+    return null;
+  }
+
+  /// Validates business name (backend: min_length=2)
+  static String? validateBusinessName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your business name';
+    }
+    if (value.trim().length < 2) {
+      return 'Business name must be at least 2 characters';
+    }
+    return null;
+  }
+
+  /// Validates services description (backend: min_length=10)
+  static String? validateServices(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please describe your services';
+    }
+    if (value.trim().length < 10) {
+      return 'Services description must be at least 10 characters';
+    }
+    return null;
+  }
+
+  /// Validates CNIC number (backend: pattern ^\d{5}-\d{7}-\d{1}$)
+  /// Format: 42101-1234567-1
+  static String? validateCnic(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your CNIC number';
+    }
+    final cnicRegex = RegExp(r'^\d{5}-\d{7}-\d{1}$');
+    if (!cnicRegex.hasMatch(value.trim())) {
+      return 'CNIC must be in format: 42101-1234567-1';
+    }
+    return null;
+  }
+
+  /// Validates WhatsApp number (required by backend)
+  static String? validateWhatsApp(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your WhatsApp number';
+    }
+    // Allow +country code format
+    final cleaned = value.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (cleaned.length < 10) {
+      return 'Please enter a valid WhatsApp number';
+    }
+    return null;
+  }
+
+  /// Validates pricing package description (backend: min_length=10)
+  static String? validatePackageDescription(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter package description';
+    }
+    if (value.trim().length < 10) {
+      return 'Description must be at least 10 characters';
+    }
+    return null;
+  }
+
+  /// Validates pricing package price (backend: must be > 0)
+  static String? validatePrice(String? value, {String fieldName = 'Price'}) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter $fieldName';
+    }
+    final price = double.tryParse(value);
+    if (price == null || price <= 0) {
+      return '$fieldName must be greater than 0';
+    }
+    return null;
+  }
+
+  /// Validates selected package (backend: must match ^(basic|premium|luxury)$)
+  static String? validateSelectedPackage(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please select a package';
+    }
+    final validPackages = ['basic', 'premium', 'luxury'];
+    if (!validPackages.contains(value.trim().toLowerCase())) {
+      return 'Package must be basic, premium, or luxury';
     }
     return null;
   }
@@ -155,13 +233,13 @@ class Validators {
     return null;
   }
 
-  /// Validates vendor response
+  /// Validates vendor response (backend: min_length=5)
   static String? validateVendorResponse(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter a response';
     }
-    if (value.trim().length < 10) {
-      return 'Response must be at least 10 characters';
+    if (value.trim().length < 5) {
+      return 'Response must be at least 5 characters';
     }
     if (value.trim().length > 1000) {
       return 'Response must be less than 1000 characters';
@@ -180,17 +258,21 @@ class Validators {
     return null;
   }
 
-  /// Validates city name
+  /// Validates city name (required for vendor create)
   static String? validateCity(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return null; // City is optional
+      return 'Please select a city';
     }
     if (value.trim().length < 2) {
       return 'City must be at least 2 characters';
     }
-    final cityRegex = RegExp(r"^[a-zA-Z\s\-']+$");
-    if (!cityRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid city name';
+    return null;
+  }
+
+  /// Validates area name (required for vendor create)
+  static String? validateArea(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please select an area';
     }
     return null;
   }

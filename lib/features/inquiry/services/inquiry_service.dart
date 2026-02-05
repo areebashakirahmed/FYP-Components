@@ -6,31 +6,25 @@ import 'package:mehfilista/utils/api_result.dart';
 
 class InquiryService {
   /// Send inquiry to a vendor (User only)
-  /// Supports both old (preferred_date) and new (event_date, selected_package, number_of_guests) API
+  /// Matches backend InquiryCreate schema exactly
   Future<ApiResult<InquiryModel>> sendInquiry({
     required String token,
     required String vendorId,
     required String eventType,
     required String eventDate, // YYYY-MM-DD format
-    required String message,
-    String? selectedPackage, // 'basic', 'premium', or 'luxury'
-    int? numberOfGuests,
+    required String selectedPackage, // must match ^(basic|premium|luxury)$
+    required int numberOfGuests, // must be > 0
+    required String message, // min_length=10
   }) async {
     try {
       final body = <String, dynamic>{
         'vendor_id': vendorId,
         'event_type': eventType,
         'event_date': eventDate,
+        'selected_package': selectedPackage,
+        'number_of_guests': numberOfGuests,
         'message': message,
       };
-
-      // Add package selection if provided
-      if (selectedPackage != null) {
-        body['selected_package'] = selectedPackage;
-      }
-      if (numberOfGuests != null) {
-        body['number_of_guests'] = numberOfGuests;
-      }
 
       final response = await http.post(
         Uri.parse(ApiConstants.sendInquiry),

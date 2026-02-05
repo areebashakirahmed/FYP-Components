@@ -13,6 +13,93 @@ class LocationProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // Fallback cities for Pakistan (used when API returns empty)
+  static final List<CityModel> _fallbackCities = [
+    CityModel(
+      id: '1',
+      name: 'Karachi',
+      areas: [
+        AreaModel(id: '1', name: 'Clifton'),
+        AreaModel(id: '2', name: 'DHA'),
+        AreaModel(id: '3', name: 'Gulshan-e-Iqbal'),
+        AreaModel(id: '4', name: 'North Nazimabad'),
+        AreaModel(id: '5', name: 'Saddar'),
+        AreaModel(id: '6', name: 'Malir'),
+        AreaModel(id: '7', name: 'Korangi'),
+      ],
+    ),
+    CityModel(
+      id: '2',
+      name: 'Lahore',
+      areas: [
+        AreaModel(id: '8', name: 'Gulberg'),
+        AreaModel(id: '9', name: 'DHA'),
+        AreaModel(id: '10', name: 'Johar Town'),
+        AreaModel(id: '11', name: 'Model Town'),
+        AreaModel(id: '12', name: 'Bahria Town'),
+        AreaModel(id: '13', name: 'Cantt'),
+      ],
+    ),
+    CityModel(
+      id: '3',
+      name: 'Islamabad',
+      areas: [
+        AreaModel(id: '14', name: 'F-6'),
+        AreaModel(id: '15', name: 'F-7'),
+        AreaModel(id: '16', name: 'F-8'),
+        AreaModel(id: '17', name: 'F-10'),
+        AreaModel(id: '18', name: 'G-6'),
+        AreaModel(id: '19', name: 'Blue Area'),
+      ],
+    ),
+    CityModel(
+      id: '4',
+      name: 'Rawalpindi',
+      areas: [
+        AreaModel(id: '20', name: 'Saddar'),
+        AreaModel(id: '21', name: 'Bahria Town'),
+        AreaModel(id: '22', name: 'PWD'),
+        AreaModel(id: '23', name: 'Satellite Town'),
+      ],
+    ),
+    CityModel(
+      id: '5',
+      name: 'Faisalabad',
+      areas: [
+        AreaModel(id: '24', name: 'Peoples Colony'),
+        AreaModel(id: '25', name: 'D Ground'),
+        AreaModel(id: '26', name: 'Samanabad'),
+        AreaModel(id: '27', name: 'Susan Road'),
+      ],
+    ),
+    CityModel(
+      id: '6',
+      name: 'Multan',
+      areas: [
+        AreaModel(id: '28', name: 'Cantt'),
+        AreaModel(id: '29', name: 'Gulgasht'),
+        AreaModel(id: '30', name: 'Model Town'),
+      ],
+    ),
+    CityModel(
+      id: '7',
+      name: 'Peshawar',
+      areas: [
+        AreaModel(id: '31', name: 'Hayatabad'),
+        AreaModel(id: '32', name: 'University Town'),
+        AreaModel(id: '33', name: 'Saddar'),
+      ],
+    ),
+    CityModel(
+      id: '8',
+      name: 'Quetta',
+      areas: [
+        AreaModel(id: '34', name: 'Cantt'),
+        AreaModel(id: '35', name: 'Satellite Town'),
+      ],
+    ),
+  ];
+
   // Getters
   List<CityModel> get cities => _cities;
   List<AreaModel> get areasForSelectedCity => _areasForSelectedCity;
@@ -34,11 +121,19 @@ class LocationProvider extends ChangeNotifier {
 
     result.when(
       success: (data) {
-        _cities = data;
-        _error = null;
+        // If API returns empty, use fallback cities
+        if (data.isEmpty) {
+          _cities = _fallbackCities;
+          _error = null;
+        } else {
+          _cities = data;
+          _error = null;
+        }
       },
       failure: (error) {
-        _error = error;
+        // On error, use fallback cities instead of showing error
+        _cities = _fallbackCities;
+        _error = null; // Don't show error to user, just use fallback
       },
     );
 

@@ -1,0 +1,420 @@
+MEHFILISTA API — Flutter Validation Checklist (Backend-Accurate)
+
+Base URL (prod example): http://20.83.180.133:9000
+Docs: /docs
+
+========================
+GENERAL REQUEST RULES
+========================
+1) Content-Type
+- JSON endpoints: send "Content-Type: application/json".
+- File upload endpoints: send multipart/form-data.
+
+2) Authentication header (protected endpoints)
+- Header: Authorization: Bearer <access_token>
+- Token comes from POST /auth/login or POST /auth/register.
+
+3) Roles
+- user: can create inquiries + reviews.
+- vendor: can create/update vendor profile + respond to inquiries + upload portfolio images.
+- admin: can use all /admin/* endpoints.
+
+4) Common error formats
+- 422 Unprocessable Entity: Pydantic request validation failed.
+  Response body:
+  {
+    "detail": "Request validation failed",
+    "errors": [...]
+  }
+- 400 Bad Request for invalid Mongo ObjectId in many endpoints (global handler):
+  {
+    "detail": "Invalid ID format. Must be a valid ObjectId.",
+    "error": "..."
+  }
+- 401 Unauthorized: missing/invalid/expired token.
+- 403 Forbidden: authenticated but wrong role or not owner.
+- 404 Not Found: referenced resource missing.
+
+5) ObjectId rule (Mongo IDs)
+- Most {vendor_id}/{review_id}/{inquiry_id}/{city_id}/{area_id}/{user_id} are Mongo ObjectId strings (24 hex chars).
+
+
+========================
+ROOT + HEALTH
+========================
+GET /
+- Public.
+- No validation.
+
+GET /health
+- Public.
+- No validation.
+
+
+========================
+AUTHENTICATION (/auth)
+========================
+POST /auth/register
+- Public.
+- Body: RegisterRequest
+  - email: must be a valid email (EmailStr)
+  - password: string, min_length=6
+  - name: string, min_length=2
+  - phone: string (required, no regex enforced)
+  - role: must match ^(user|vendor)$
+  - city: optional string
+  - area: optional string
+- Server-side rules:
+  - email must be unique; else 400 "Email already registered".
+- Returns: TokenResponse {access_token, token_type=bearer, user}
+
+POST /auth/login
+- Public.
+- Body: LoginRequest
+  - email: valid email
+  - password: string (required)
+- Server-side rules:
+  - invalid email OR password => 401 "Invalid email or password".
+- Returns: TokenResponse
+
+GET /auth/me
+- Requires Bearer token.
+- Returns: UserResponse
+
+POST /auth/reset-password
+- Public.
+- Body: PasswordResetRequest
+  - email: valid email
+  - new_password: min_length=6
+- Server-side rules:
+  - unknown email => 404 "User not found".
+
+PUT /auth/profile
+- Requires Bearer token.
+- Body: ProfileUpdateRequest (ALL OPTIONAL, but at least one field required)
+  - name: optional, min_length=2
+  - phone: optional
+  - city: optional
+  - area: optional
+- Server-side rules:
+  - if body has no fields => 400 "No fields to update"
+  - if DB update results in no changes => 400 "No changes made"
+- Note: response currently returns id/email/name/phone/role; city/area are NOT included in this response.
+
+
+========================
+HOMEPAGE (/home)
+========================
+GET /home/recommendations
+- Public.
+- No params.
+- Returns:
+  - featured_vendors: list[VendorResponse]
+  - popular_categories: [{name, count, icon}]
+  - recent_vendors: list[VendorResponse]
+  - statistics: {total_vendors, total_reviews, total_events_booked}
+
+GET /home/categories
+- Public.
+- No params.
+- Returns categories aggregated from approved vendors.
+
+GET /home/locations
+- Public.
+- No params.
+- Returns cities aggregated from approved vendors.
+
+
+========================
+VENDORS (/vendors)
+========================
+POST /vendors
+- Requires Bearer token + role=vendor.
+- Body: VendorCreate
+  - business_name: string, min_length=2
+  - category: list[string], min_items=1
+  - services: string, min_length=10
+  - city: string (required)
+  - area: string (required)
+  - event_types: list[string], min_items=1
+  - cnic_number: must match ^\d{5}-\d{7}-\d{1}$ (example: 42101-1234567-1)
+  - cnic_front_image: string (required, typically an uploads path)
+  - cnic_back_image: string (required)
+  - whatsapp_number: string (required)
+  - basic_package: optional object
+    - description: string, min_length=10
+    - base_price: float, must be > 0
+    - per_head_price: float, must be > 0
+  - premium_package: optional object (same validation as basic_package)
+  - luxury_package: optional object (same validation as basic_package)
+  - availability: optional string, default "active"
+- Server-side rules:
+  - only 1 vendor profile per vendor user; else 400.
+  - new vendors are created as pending approval:
+    approval_status="pending" and approved=false.
+
+GET /vendors/search
+- Public.
+- Query params (all optional unless noted):
+  - category: string
+  - location: string (searches legacy vendor.location OR vendor.city OR vendor.area, case-insensitive)
+  - event_type: string
+  - min_rating: float, must be between 1 and 5 (inclusive) if provided
+  - approved_only: bool, default true
+- Server-side rules:
+  - only availability="active" vendors are returned.
+  - when approved_only=true, only approved vendors are returned.
+
+GET /vendors/me
+- Requires Bearer token + role=vendor.
+- 404 if profile does not exist.
+
+GET /vendors/{vendor_id}
+- Public.
+- vendor_id should be ObjectId string (invalid => 400).
+- 404 if vendor not found.
+
+PUT /vendors/{vendor_id}
+- Requires Bearer token + role=vendor.
+- Body: VendorUpdate (all optional)
+  - business_name?: string
+  - category?: list[string]
+  - services?: string
+  - city?: string
+  - area?: string
+  - event_types?: list[string]
+  - whatsapp_number?: string
+  - basic_package/premium_package/luxury_package?: PricingPackageSchema (same validation as create)
+  - availability?: string
+- Server-side rules:
+  - can only update your own vendor profile; else 403.
+
+POST /vendors/{vendor_id}/portfolio
+- Requires Bearer token + role=vendor.
+- multipart/form-data:
+  - file: required
+- Server-side file rules:
+  - allowed content_type: image/jpeg, image/png, image/jpg, image/webp
+  - otherwise 400 "Only JPEG, PNG, and WebP images are allowed"
+
+
+========================
+INQUIRIES (/inquiries)
+========================
+POST /inquiries
+- Requires Bearer token + role=user.
+- Body: InquiryCreate
+  - vendor_id: string (ObjectId)
+  - event_type: string (required)
+  - event_date: string (expected YYYY-MM-DD; not strictly enforced by Pydantic)
+  - selected_package: must match ^(basic|premium|luxury)$
+  - number_of_guests: int, must be > 0
+  - message: string, min_length=10
+- Server-side rules:
+  - vendor_id must exist; else 404 "Vendor not found".
+  - estimated_cost is computed only if the vendor has the selected package stored.
+
+GET /inquiries/me
+- Requires Bearer token + role=user.
+
+GET /inquiries/vendor/me
+- Requires Bearer token + role=vendor.
+- Server-side rule:
+  - if vendor profile does not exist => 404 "Vendor profile not found".
+
+GET /inquiries/{inquiry_id}
+- Requires Bearer token (any role), but access is restricted.
+- Access rules:
+  - allowed if current user is the inquiry sender (user_id matches)
+  - OR current user is the vendor owner who received it
+  - otherwise 403 "Not authorized to view this inquiry"
+
+PUT /inquiries/{inquiry_id}
+- Requires Bearer token + role=vendor.
+- Body: InquiryUpdate
+  - status: must match ^(accepted|declined)$
+  - vendor_response: string, min_length=5
+- Server-side rule:
+  - only the vendor who received the inquiry can respond; else 403.
+
+
+========================
+REVIEWS (/reviews)
+========================
+POST /reviews
+- Requires Bearer token + role=user.
+- Body: ReviewCreate
+  - vendor_id: string (ObjectId)
+  - rating: int, must be between 1 and 5
+  - comment: string, min_length=10
+- Server-side rules:
+  - vendor must exist; else 404.
+  - only 1 review per (user_id, vendor_id); else 400 "You have already reviewed this vendor".
+
+GET /reviews/vendor/{vendor_id}
+- Public.
+- vendor_id should be ObjectId.
+- Server-side rule:
+  - vendor must exist; else 404.
+
+DELETE /reviews/{review_id}
+- Requires Bearer token + role=admin.
+- review_id should be ObjectId.
+- 404 if review not found.
+
+
+========================
+LOCATIONS (PUBLIC) (/locations)
+========================
+GET /locations/cities
+- Public.
+- Query:
+  - active_only: bool, default true
+
+GET /locations/cities-with-areas
+- Public.
+- Query:
+  - active_only: bool, default true
+
+GET /locations/cities/{city_id}/areas
+- Public.
+- Query:
+  - active_only: bool, default true
+- Note:
+  - The backend accepts either a city ObjectId OR a city name in {city_id}.
+  - If an ObjectId is provided but there are no areas, an empty list may be returned.
+  - If a city name is provided and not found => 404 "City '<name>' not found".
+
+
+========================
+ADMIN API (/admin) — requires role=admin
+========================
+All /admin/* endpoints require:
+- Authorization: Bearer <token>
+- The token’s user must have role=admin
+
+GET /admin/vendors/pending
+- Returns vendors pending approval.
+
+PUT /admin/vendors/{vendor_id}/approve
+- No body.
+- 404 if vendor not found.
+
+PUT /admin/vendors/{vendor_id}/reject
+- Body: VendorApprovalRequest
+  - rejection_reason: optional string (if omitted, server sets a default message)
+- 404 if vendor not found.
+
+GET /admin/stats
+- No params.
+
+GET /admin/inquiries/all
+- Returns all inquiries/events.
+
+PUT /admin/vendors/{vendor_id}/edit
+- Body: VendorUpdate (same as vendor update).
+
+POST /admin/vendors/create
+- Body: VendorCreate (same as vendor create).
+- Note: this creates a vendor tied to the admin user_id and marks it approved.
+
+DELETE /admin/inquiries/{inquiry_id}
+- No body.
+
+PUT /admin/inquiries/{inquiry_id}/status
+- Body: {"status": "pending" | "accepted" | "declined"}
+- If invalid status => 400.
+
+GET /admin/users/all
+- No params.
+
+DELETE /admin/users/{user_id}
+- No body.
+- Server-side rules:
+  - cannot delete admin accounts => 403.
+
+GET /admin/categories
+- No params.
+
+POST /admin/categories
+- Body: CategoryCreate
+  - name: string, min_length=2
+  - icon: string, default "tag"
+  - description: optional string
+- Server-side rules:
+  - name is lowercased when stored
+  - duplicate name (case-insensitive) => 400
+
+PUT /admin/categories/{category_id}
+- Body: CategoryUpdate
+  - name: optional string, min_length=2
+  - icon: optional
+  - description: optional
+
+DELETE /admin/categories/{category_id}
+- No body.
+
+GET /admin/reviews/all
+- No params.
+
+PUT /admin/vendors/{vendor_id}/approve-with-email
+- No body.
+- Note: sets approved=true and queues a notification record.
+
+PUT /admin/vendors/{vendor_id}/reject-with-email
+- Optional query param: reason (string)
+- Note: sets approved=false and stores rejection_reason, queues a notification record.
+
+
+========================
+ADMIN LOCATION MGMT (/admin)
+========================
+POST /admin/cities
+- Body: CityCreate
+  - name: string, min_length=2
+  - country: string, default "Pakistan"
+  - is_active: bool, default true
+- Server-side rules:
+  - exact-name duplicates => 400 "City already exists"
+
+GET /admin/cities
+- Query:
+  - active_only: bool, default false
+
+PUT /admin/cities/{city_id}
+- Body: CityUpdate
+  - name: optional string (NOTE: no min_length validation on update)
+  - is_active: optional bool
+
+DELETE /admin/cities/{city_id}
+- Server-side rule:
+  - cannot delete city if any areas exist for it => 400 "Cannot delete city with existing areas"
+
+POST /admin/areas
+- Body: AreaCreate
+  - city_id: string (ObjectId)
+  - name: string, min_length=2
+  - is_active: bool, default true
+- Server-side rules:
+  - city must exist => else 404
+  - duplicate area name within same city => 400
+
+GET /admin/cities/{city_id}/areas
+- Query:
+  - active_only: bool, default false
+
+PUT /admin/areas/{area_id}
+- Body: AreaUpdate
+  - name: optional string (NOTE: no min_length validation on update)
+  - is_active: optional bool
+
+DELETE /admin/areas/{area_id}
+
+
+========================
+ADMIN UI (HTML PAGES) (/admin-ui)
+========================
+These are NOT JSON API endpoints (they return HTML templates):
+- GET /admin-ui
+- GET /admin-ui/login
+- GET /admin-ui/dashboard

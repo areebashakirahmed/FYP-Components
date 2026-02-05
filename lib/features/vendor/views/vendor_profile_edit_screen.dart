@@ -322,19 +322,13 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
 
     bool success;
     if (_isNewProfile) {
-      success = await vendorProvider.createVendorProfile(
-        token: token,
-        businessName: _businessNameController.text.trim(),
-        category: _selectedCategories,
-        services: _servicesController.text.trim(),
-        location: _locationController.text.trim(),
-        eventTypes: _selectedEventTypes,
-        pricing: _pricingController.text.trim(),
-        availability: _availabilityController.text.trim(),
-        contactPhone: _contactPhoneController.text.trim(),
-        contactEmail: _contactEmailController.text.trim(),
-        description: _descriptionController.text.trim(),
+      // New profiles should be created via VendorRegistrationScreen which has all required fields
+      // This screen doesn't have city/area/cnic/whatsapp fields needed for creation
+      Fluttertoast.showToast(
+        msg: 'Please use Vendor Registration to create a profile',
       );
+      setState(() => _isLoading = false);
+      return;
     } else {
       final vendorId = vendorProvider.myVendorProfile?.id ?? '';
       success = await vendorProvider.updateVendorProfile(
@@ -343,22 +337,18 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
         businessName: _businessNameController.text.trim(),
         category: _selectedCategories,
         services: _servicesController.text.trim(),
-        location: _locationController.text.trim(),
         eventTypes: _selectedEventTypes,
-        pricing: _pricingController.text.trim(),
+        whatsappNumber: _contactPhoneController.text.trim().isNotEmpty
+            ? _contactPhoneController.text.trim()
+            : null,
         availability: _availabilityController.text.trim(),
-        contactPhone: _contactPhoneController.text.trim(),
-        contactEmail: _contactEmailController.text.trim(),
-        description: _descriptionController.text.trim(),
       );
     }
 
     setState(() => _isLoading = false);
 
     if (success) {
-      Fluttertoast.showToast(
-        msg: _isNewProfile ? 'Profile created!' : 'Profile updated!',
-      );
+      Fluttertoast.showToast(msg: 'Profile updated!');
       Navigator.pop(context);
     } else {
       Fluttertoast.showToast(msg: vendorProvider.error ?? 'Failed to save');

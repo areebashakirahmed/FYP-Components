@@ -56,7 +56,8 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
     final locationController = TextEditingController();
     final guestCountController = TextEditingController(text: '100');
     final messageController = TextEditingController();
-    String? selectedPackage;
+    String selectedPackage =
+        'basic'; // Default to basic - backend requires this
     int numberOfGuests = 100;
     double estimatedCost = 0;
     final formKey = GlobalKey<FormState>();
@@ -180,7 +181,44 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                         ),
                         SizedBox(height: 12.h),
                       ] else ...[
-                        // Legacy guest count field
+                        // Package selection dropdown (required by backend)
+                        DropdownButtonFormField<String>(
+                          value: selectedPackage,
+                          decoration: InputDecoration(
+                            labelText: 'Select Package *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            prefixIcon: Icon(Icons.card_giftcard_outlined),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'basic',
+                              child: Text('Basic'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'premium',
+                              child: Text('Premium'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'luxury',
+                              child: Text('Luxury'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setSheetState(() => selectedPackage = value);
+                            }
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please select a package';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 12.h),
+                        // Guest count field
                         TextFormField(
                           controller: guestCountController,
                           keyboardType: TextInputType.number,
@@ -280,7 +318,15 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                             selectedPackage: selectedPackage,
                                           );
 
-                                      // Use new API with package selection
+                                      // Validate package is selected
+                                      if (selectedPackage.isEmpty) {
+                                        Fluttertoast.showToast(
+                                          msg: 'Please select a package',
+                                        );
+                                        return;
+                                      }
+
+                                      // Send inquiry with required fields
                                       final success = await inquiryProvider
                                           .sendInquiry(
                                             token: authProvider.token ?? '',
