@@ -252,17 +252,16 @@ class VendorService {
     }
   }
 
-  /// Upload a file and get the URL
-  /// Note: The generic /upload endpoint may not exist on all backends.
-  /// Falls back to returning local file path as placeholder.
-  Future<ApiResult<String>> uploadFile({
+  /// Upload a single image using the new /upload/image endpoint
+  /// Returns the file_path from the server
+  Future<ApiResult<String>> uploadImage({
     required String token,
     required String filePath,
   }) async {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse(ApiConstants.uploadFile),
+        Uri.parse(ApiConstants.uploadImage),
       );
       request.headers['Authorization'] = 'Bearer $token';
 
@@ -274,22 +273,87 @@ class VendorService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        final fileUrl = data['url'] ?? data['file_url'] ?? '';
-        return ApiResult.success(fileUrl);
-      } else if (response.statusCode == 404) {
-        // Upload endpoint doesn't exist — return a placeholder string
-        // Backend accepts any string for CNIC image URLs
-        return ApiResult.success('pending_upload_$filePath');
+        final filePath = data['file_path'] ?? data['url'] ?? '';
+        return ApiResult.success(filePath);
       } else {
-        return ApiResult.failure('Failed to upload file: ${response.body}');
+        return ApiResult.failure('Upload failed: ${response.body}');
       }
     } catch (e) {
-      // Network error — return placeholder
-      return ApiResult.success('pending_upload_$filePath');
+      return ApiResult.failure('Network error: $e');
     }
   }
 
+  /// Upload multiple images using the new /upload/images endpoint
+  /// Returns list of file_path from the server
+  Future<ApiResult<List<String>>> uploadMultipleImages({
+    required String token,
+    required List<String> filePaths,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConstants.uploadImages),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+
+      for (final path in filePaths) {
+        final file = await http.MultipartFile.fromPath('files', path);
+        request.files.add(file);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final uploaded = data['uploaded'] as List<dynamic>;
+        final paths = uploaded
+            .map((file) => file['file_path'] as String)
+            .toList();
+        return ApiResult.success(paths);
+      } else {
+        return ApiResult.failure('Upload failed: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Delete an uploaded file
+  Future<ApiResult<bool>> deleteUploadedFile({
+    required String token,
+    required String filename,
+  }) async {
+    try {
+      // Extract just filename from path if needed
+      final filenameOnly = filename.split('/').last;
+
+      final response = await http.delete(
+        Uri.parse(ApiConstants.deleteUploadedFile(filenameOnly)),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        return ApiResult.success(true);
+      } else {
+        return ApiResult.failure('Failed to delete: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Legacy upload method - uses new uploadImage internally
+  @Deprecated('Use uploadImage instead')
+  Future<ApiResult<String>> uploadFile({
+    required String token,
+    required String filePath,
+  }) async {
+    return uploadImage(token: token, filePath: filePath);
+  }
+
   /// Upload CNIC images for verification (Vendor only)
+  /// Uses the new /upload/image endpoint
   Future<ApiResult<Map<String, String>>> uploadCnicImages({
     required String token,
     required String frontImagePath,
@@ -297,7 +361,7 @@ class VendorService {
   }) async {
     try {
       // Upload front image
-      final frontResult = await uploadFile(
+      final frontResult = await uploadImage(
         token: token,
         filePath: frontImagePath,
       );
@@ -308,7 +372,7 @@ class VendorService {
       );
 
       // Upload back image
-      final backResult = await uploadFile(
+      final backResult = await uploadImage(
         token: token,
         filePath: backImagePath,
       );

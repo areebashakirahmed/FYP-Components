@@ -1,3 +1,5 @@
+import 'package:mehfilista/features/vendor/models/vendor_model.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -6,6 +8,7 @@ class UserModel {
   final String role;
   final String? city;
   final String? area;
+  final VendorModel? vendorProfile; // For vendors - contains approval status
 
   UserModel({
     required this.id,
@@ -15,6 +18,7 @@ class UserModel {
     required this.role,
     this.city,
     this.area,
+    this.vendorProfile,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,12 @@ class UserModel {
       role: json['role'] ?? '',
       city: json['city'],
       area: json['area'],
+      vendorProfile:
+          json['vendor_profile'] != null || json['vendorProfile'] != null
+          ? VendorModel.fromJson(
+              json['vendor_profile'] ?? json['vendorProfile'] ?? {},
+            )
+          : null,
     );
   }
 
@@ -38,6 +48,7 @@ class UserModel {
       'role': role,
       if (city != null) 'city': city,
       if (area != null) 'area': area,
+      if (vendorProfile != null) 'vendor_profile': vendorProfile!.toJson(),
     };
   }
 }

@@ -304,12 +304,12 @@ class VendorProvider extends ChangeNotifier {
     return urls;
   }
 
-  /// Upload a single file and get the URL
+  /// Upload a single file and get the URL (using new endpoint)
   Future<String?> uploadFile({
     required String token,
     required String filePath,
   }) async {
-    final result = await _vendorService.uploadFile(
+    final result = await _vendorService.uploadImage(
       token: token,
       filePath: filePath,
     );
@@ -320,6 +320,54 @@ class VendorProvider extends ChangeNotifier {
       failure: (error) => _error = error,
     );
     return url;
+  }
+
+  /// Upload multiple images at once (NEW - Feb 2026)
+  Future<List<String>?> uploadMultipleImages({
+    required String token,
+    required List<String> filePaths,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final result = await _vendorService.uploadMultipleImages(
+      token: token,
+      filePaths: filePaths,
+    );
+
+    List<String>? urls;
+    result.when(
+      success: (data) {
+        urls = data;
+        _error = null;
+      },
+      failure: (error) {
+        _error = error;
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+    return urls;
+  }
+
+  /// Delete an uploaded file (NEW - Feb 2026)
+  Future<bool> deleteUploadedFile({
+    required String token,
+    required String filename,
+  }) async {
+    final result = await _vendorService.deleteUploadedFile(
+      token: token,
+      filename: filename,
+    );
+
+    bool success = false;
+    result.when(
+      success: (data) => success = data,
+      failure: (error) => _error = error,
+    );
+    return success;
   }
 
   /// Clear filters and search results

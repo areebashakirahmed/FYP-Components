@@ -37,10 +37,21 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
     final authProvider = context.read<AuthProvider>();
     final vendorProvider = context.read<VendorProvider>();
     final token = authProvider.token;
-    final vendorId = vendorProvider.myVendorProfile?.id;
 
-    if (token == null || vendorId == null) {
-      Fluttertoast.showToast(msg: 'Not authenticated');
+    if (token == null) {
+      Fluttertoast.showToast(msg: 'Not authenticated - please login');
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // Ensure vendor profile is loaded
+    if (vendorProvider.myVendorProfile == null) {
+      await vendorProvider.loadMyVendorProfile(token);
+    }
+
+    final vendorId = vendorProvider.myVendorProfile?.id;
+    if (vendorId == null || vendorId.isEmpty) {
+      Fluttertoast.showToast(msg: 'Vendor profile not found');
       setState(() => _isLoading = false);
       return;
     }

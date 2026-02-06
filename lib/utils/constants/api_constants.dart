@@ -23,6 +23,14 @@ class ApiConstants {
   static const String myVendor = '$baseUrl/vendors/me';
   static String updateVendor(String id) => '$baseUrl/vendors/$id';
   static String uploadPortfolio(String id) => '$baseUrl/vendors/$id/portfolio';
+
+  // Upload endpoints (NEW - Feb 2026)
+  static const String uploadImage = '$baseUrl/upload/image';
+  static const String uploadImages = '$baseUrl/upload/images';
+  static String deleteUploadedFile(String filename) =>
+      '$baseUrl/upload/$filename';
+
+  // Legacy endpoint (fallback)
   static const String uploadFile = '$baseUrl/upload';
 
   // Inquiries
