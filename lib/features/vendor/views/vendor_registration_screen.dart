@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/location/providers/location_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
+import 'package:mehfilista/features/vendor/views/vendor_verification_pending_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
@@ -296,10 +297,27 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
     );
 
     if (success && mounted) {
+      // Refresh user data to get updated vendorProfile with approval_status
+      await authProvider.refreshUser();
+
       Fluttertoast.showToast(
         msg: 'Registration submitted! Please wait for approval.',
       );
-      Navigator.pop(context);
+
+      // Navigate to verification pending screen
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VendorVerificationPendingScreen(
+              vendorEmail: authProvider.user?.email ?? '',
+              approvalStatus:
+                  authProvider.user?.vendorProfile?.approvalStatus.name ??
+                  'pending',
+            ),
+          ),
+        );
+      }
     } else if (vendorProvider.error != null) {
       Fluttertoast.showToast(
         msg: vendorProvider.error ?? 'Registration failed',

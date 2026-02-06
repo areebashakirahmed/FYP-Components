@@ -45,7 +45,9 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
   }
 
   void _performSearch() {
-    _searchQuery = _searchController.text.trim().toLowerCase();
+    setState(() {
+      _searchQuery = _searchController.text.trim().toLowerCase();
+    });
     context.read<VendorProvider>().searchVendors(
       category: _selectedCategory,
       location: _selectedLocation,
@@ -301,18 +303,32 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
                   horizontal: 16.w,
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.search, color: AppColors.primary),
+                            onPressed: _performSearch,
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                              _performSearch();
+                            },
+                          ),
+                        ],
                       )
-                    : null,
+                    : IconButton(
+                        icon: Icon(Icons.search, color: AppColors.primary),
+                        onPressed: _performSearch,
+                      ),
               ),
               onChanged: (value) {
+                // Trigger search on text change for live filtering
                 setState(() {
                   _searchQuery = value.trim().toLowerCase();
                 });

@@ -39,19 +39,22 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
     final token = authProvider.token;
 
     if (token == null) {
-      Fluttertoast.showToast(msg: 'Not authenticated - please login');
+      Fluttertoast.showToast(msg: 'Not authenticated - please login again');
       setState(() => _isLoading = false);
       return;
     }
 
     // Ensure vendor profile is loaded
     if (vendorProvider.myVendorProfile == null) {
+      Fluttertoast.showToast(msg: 'Loading vendor profile...');
       await vendorProvider.loadMyVendorProfile(token);
     }
 
     final vendorId = vendorProvider.myVendorProfile?.id;
     if (vendorId == null || vendorId.isEmpty) {
-      Fluttertoast.showToast(msg: 'Vendor profile not found');
+      Fluttertoast.showToast(
+        msg: 'Vendor profile not found. Please try again.',
+      );
       setState(() => _isLoading = false);
       return;
     }
@@ -129,157 +132,162 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20.w,
-            right: 20.w,
-            top: 20.h,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
           ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    existingPackage != null ? 'Edit Package' : 'Add Package',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  // Package Name
-                  TextFormField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Package Name *',
-                      hintText: 'e.g., Basic, Premium, Gold',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20.w,
+              right: 20.w,
+              top: 20.h,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
+            ),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      existingPackage != null ? 'Edit Package' : 'Add Package',
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter package name';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 12.h),
+                    SizedBox(height: 20.h),
 
-                  // Description
-                  TextFormField(
-                    controller: descriptionController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Description *',
-                      hintText: 'Brief description of this package',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter description';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 12.h),
-
-                  // Price
-                  TextFormField(
-                    controller: priceController,
-                    decoration: InputDecoration(
-                      labelText: 'Price *',
-                      hintText: 'e.g., PKR 50,000',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter price';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 12.h),
-
-                  // Features (one per line)
-                  TextFormField(
-                    controller: featuresController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      labelText: 'Features (one per line)',
-                      hintText:
-                          '4 hours coverage\n100 edited photos\nOnline gallery',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      helperText: 'Enter each feature on a new line',
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  // Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        shape: RoundedRectangleBorder(
+                    // Package Name
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Package Name *',
+                        hintText: 'e.g., Basic, Premium, Gold',
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                       ),
-                      onPressed: () {
-                        if (!formKey.currentState!.validate()) return;
-
-                        final features = featuresController.text
-                            .split('\n')
-                            .where((f) => f.trim().isNotEmpty)
-                            .map((f) => f.trim())
-                            .toList();
-
-                        final package = PricingPackageModel(
-                          name: nameController.text.trim(),
-                          description: descriptionController.text.trim(),
-                          price: priceController.text.trim(),
-                          features: features.isNotEmpty ? features : null,
-                        );
-
-                        setState(() {
-                          if (index != null) {
-                            _packages[index] = package;
-                          } else {
-                            _packages.add(package);
-                          }
-                        });
-
-                        Navigator.pop(context);
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter package name';
+                        }
+                        return null;
                       },
-                      child: Text(
-                        existingPackage != null
-                            ? 'Update Package'
-                            : 'Add Package',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Description
+                    TextFormField(
+                      controller: descriptionController,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Description *',
+                        hintText: 'Brief description of this package',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter description';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Price
+                    TextFormField(
+                      controller: priceController,
+                      decoration: InputDecoration(
+                        labelText: 'Price *',
+                        hintText: 'e.g., PKR 50,000',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter price';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Features (one per line)
+                    TextFormField(
+                      controller: featuresController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        labelText: 'Features (one per line)',
+                        hintText:
+                            '4 hours coverage\n100 edited photos\nOnline gallery',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        helperText: 'Enter each feature on a new line',
+                      ),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                        ),
+                        onPressed: () {
+                          if (!formKey.currentState!.validate()) return;
+
+                          final features = featuresController.text
+                              .split('\n')
+                              .where((f) => f.trim().isNotEmpty)
+                              .map((f) => f.trim())
+                              .toList();
+
+                          final package = PricingPackageModel(
+                            name: nameController.text.trim(),
+                            description: descriptionController.text.trim(),
+                            price: priceController.text.trim(),
+                            features: features.isNotEmpty ? features : null,
+                          );
+
+                          setState(() {
+                            if (index != null) {
+                              _packages[index] = package;
+                            } else {
+                              _packages.add(package);
+                            }
+                          });
+
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          existingPackage != null
+                              ? 'Update Package'
+                              : 'Add Package',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
