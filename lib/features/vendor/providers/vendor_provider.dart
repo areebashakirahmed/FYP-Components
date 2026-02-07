@@ -34,8 +34,11 @@ class VendorProvider extends ChangeNotifier {
   double? get minRatingFilter => _minRatingFilter;
 
   /// Search vendors with filters
+  /// Supports: category, city, area, event_type, min_rating, approved_only
   Future<void> searchVendors({
     String? category,
+    String? city,
+    String? area,
     String? location,
     String? eventType,
     double? minRating,
@@ -46,7 +49,7 @@ class VendorProvider extends ChangeNotifier {
 
     // Update filters
     _categoryFilter = category;
-    _locationFilter = location;
+    _locationFilter = location ?? city;
     _eventTypeFilter = eventType;
     _minRatingFilter = minRating;
 
@@ -54,6 +57,8 @@ class VendorProvider extends ChangeNotifier {
 
     final result = await _vendorService.searchVendors(
       category: category,
+      city: city,
+      area: area,
       location: location,
       eventType: eventType,
       minRating: minRating,

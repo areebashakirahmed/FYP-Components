@@ -109,31 +109,33 @@ class LocationProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasError => _error != null;
 
-  /// Load all cities with their areas
+  /// Load cities from /locations/cities endpoint
+  /// Falls back to legacy /locations/cities-with-areas or hardcoded list
   Future<void> loadCities({bool activeOnly = true}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
-    final result = await _locationService.getCitiesWithAreas(
-      activeOnly: activeOnly,
-    );
+    // Try new API endpoint first: GET /locations/cities
+    final citiesResult = await _locationService.getCities();
 
-    result.when(
-      success: (data) {
-        // If API returns empty, use fallback cities
-        if (data.isEmpty) {
-          _cities = _fallbackCities;
+    citiesResult.when(
+      success: (cityNames) {
+        if (cityNames.isNotEmpty) {
+          // Build CityModel list from names (areas loaded on-demand)
+          _cities = cityNames
+              .map((name) => CityModel(id: name, name: name))
+              .toList();
           _error = null;
         } else {
-          _cities = data;
+          _cities = _fallbackCities;
           _error = null;
         }
       },
       failure: (error) {
-        // On error, use fallback cities instead of showing error
-        _cities = _fallbackCities;
-        _error = null; // Don't show error to user, just use fallback
+        // Fallback to legacy endpoint
+        _loadCitiesLegacy(activeOnly);
+        return;
       },
     );
 
@@ -141,19 +143,75 @@ class LocationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Select a city and update available areas
-  void selectCity(String cityName) {
+  /// Legacy fallback: Load from /locations/cities-with-areas
+  Future<void> _loadCitiesLegacy(bool activeOnly) async {
+    final result = await _locationService.getCitiesWithAreas(
+      activeOnly: activeOnly,
+    );
+
+    result.when(
+      success: (data) {
+        if (data.isEmpty) {
+          _cities = _fallbackCities;
+        } else {
+          _cities = data;
+        }
+        _error = null;
+      },
+      failure: (error) {
+        // Use fallback cities on any error
+        _cities = _fallbackCities;
+        _error = null;
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Select a city and load its areas from API
+  /// API: GET /locations/cities/{city}/areas
+  Future<void> selectCity(String cityName) async {
     _selectedCity = cityName;
     _selectedArea = null;
+    _areasForSelectedCity = [];
+    notifyListeners();
 
-    // Find areas for the selected city
-    final city = _cities.firstWhere(
-      (c) => c.name == cityName,
-      orElse: () => CityModel(id: '', name: ''),
+    // Try to load areas from new API endpoint
+    final areasResult = await _locationService.getCityAreas(cityName);
+
+    areasResult.when(
+      success: (areaNames) {
+        if (areaNames.isNotEmpty) {
+          _areasForSelectedCity = areaNames
+              .map((name) => AreaModel(id: name, name: name))
+              .toList();
+        } else {
+          _loadAreasFromFallback(cityName);
+        }
+      },
+      failure: (error) {
+        // Fallback: find areas from pre-loaded cities data
+        _loadAreasFromFallback(cityName);
+      },
     );
-    _areasForSelectedCity = city.areas;
 
     notifyListeners();
+  }
+
+  /// Load areas from fallback/cached city data
+  void _loadAreasFromFallback(String cityName) {
+    final city = _cities.firstWhere(
+      (c) => c.name == cityName,
+      orElse: () {
+        // Check hardcoded fallback too
+        return _fallbackCities.firstWhere(
+          (c) => c.name == cityName,
+          orElse: () => CityModel(id: '', name: ''),
+        );
+      },
+    );
+    _areasForSelectedCity = city.areas;
   }
 
   /// Select an area

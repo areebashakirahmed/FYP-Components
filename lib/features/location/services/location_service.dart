@@ -5,7 +5,52 @@ import 'package:mehfilista/utils/constants/api_constants.dart';
 import 'package:mehfilista/utils/api_result.dart';
 
 class LocationService {
-  /// Get all cities with their areas
+  /// Get all available cities
+  /// API: GET /locations/cities
+  /// Returns: { "cities": ["Karachi", "Lahore", ...] }
+  Future<ApiResult<List<String>>> getCities() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConstants.cities),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final cityList = List<String>.from(data['cities'] ?? []);
+        return ApiResult.success(cityList);
+      } else {
+        return ApiResult.failure('Failed to load cities: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Get all areas for a specific city
+  /// API: GET /locations/cities/{city}/areas
+  /// Returns: { "city": "Karachi", "areas": ["Gulshan", "DHA", ...] }
+  Future<ApiResult<List<String>>> getCityAreas(String city) async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConstants.cityAreas(city)),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final areaList = List<String>.from(data['areas'] ?? []);
+        return ApiResult.success(areaList);
+      } else {
+        return ApiResult.failure('Failed to load areas: ${response.body}');
+      }
+    } catch (e) {
+      return ApiResult.failure('Network error: $e');
+    }
+  }
+
+  /// Legacy: Get all cities with their areas in one call
+  /// Fallback if new endpoints aren't available
   Future<ApiResult<List<CityModel>>> getCitiesWithAreas({
     bool activeOnly = true,
   }) async {

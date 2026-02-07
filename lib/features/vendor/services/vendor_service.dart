@@ -6,8 +6,11 @@ import 'package:mehfilista/utils/api_result.dart';
 
 class VendorService {
   /// Search vendors with filters
+  /// Supports: category, city, area, event_type, min_rating, approved_only
   Future<ApiResult<List<VendorModel>>> searchVendors({
     String? category,
+    String? city,
+    String? area,
     String? location,
     String? eventType,
     double? minRating,
@@ -16,6 +19,8 @@ class VendorService {
     try {
       final queryParams = <String, String>{};
       if (category != null) queryParams['category'] = category;
+      if (city != null) queryParams['city'] = city;
+      if (area != null) queryParams['area'] = area;
       if (location != null) queryParams['location'] = location;
       if (eventType != null) queryParams['event_type'] = eventType;
       if (minRating != null) queryParams['min_rating'] = minRating.toString();

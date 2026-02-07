@@ -50,7 +50,7 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
     });
     context.read<VendorProvider>().searchVendors(
       category: _selectedCategory,
-      location: _selectedLocation,
+      city: _selectedLocation,
       minRating: _minRating,
       approvedOnly: true,
     );

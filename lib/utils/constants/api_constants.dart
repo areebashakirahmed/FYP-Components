@@ -9,6 +9,10 @@ class ApiConstants {
   static const String resetPassword = '$baseUrl/auth/reset-password';
 
   // Location endpoints
+  static const String cities = '$baseUrl/locations/cities';
+  static String cityAreas(String city) =>
+      '$baseUrl/locations/cities/$city/areas';
+  // Legacy (kept for fallback)
   static const String citiesWithAreas = '$baseUrl/locations/cities-with-areas';
 
   // Home endpoints

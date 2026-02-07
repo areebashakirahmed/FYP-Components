@@ -1,0 +1,546 @@
+# Mehfilista API Endpoints
+
+Complete list of all API endpoints for the Flutter app.
+
+## Base URL
+
+```
+Production: http://20.83.180.133:9000
+Local: http://localhost:9000
+```
+
+## Current Version
+
+**v1.1.0** - Includes vendor_profile in /auth/me, improved inquiry handling
+
+## 🏠 Homepage Endpoints
+
+### GET `/home/recommendations`
+
+Get homepage recommendations for Flutter app
+
+- **Auth**: Not required (Public)
+- **Returns**:
+  - `featured_vendors` - Top-rated vendors
+  - `popular_categories` - Categories with counts and icons
+  - `recent_vendors` - Recently added vendors
+  - `statistics` - Platform stats (total vendors, reviews, events)
+
+**Response Example:**
+
+```json
+{
+  "featured_vendors": [...],
+  "popular_categories": [
+    {
+      "name": "photography",
+      "count": 15,
+      "icon": "camera"
+    }
+  ],
+  "recent_vendors": [...],
+  "statistics": {
+    "total_vendors": 50,
+    "total_reviews": 120,
+    "total_events_booked": 45
+  }
+}
+```
+
+### GET `/home/categories`
+
+Get all available categories with vendor counts
+
+- **Auth**: Not required (Public)
+- **Returns**: List of categories with counts and Flutter icon names
+
+### GET `/home/locations`
+
+Get popular locations with vendor counts
+
+- **Auth**: Not required (Public)
+- **Returns**: List of locations sorted by vendor count
+
+---
+
+## 📍 Location Endpoints
+
+### GET `/locations/cities`
+
+Get all available cities
+
+- **Auth**: Not required (Public)
+- **Returns**: List of cities where vendors are available
+
+**Response Example:**
+
+```json
+{
+  "cities": ["Karachi", "Lahore", "Islamabad", "Faisalabad"]
+}
+```
+
+### GET `/locations/cities/{city}/areas`
+
+Get all areas in a specific city
+
+- **Auth**: Not required (Public)
+- **Path Parameter**: `city` - City name
+- **Returns**: List of areas in the specified city
+
+**Response Example:**
+
+```json
+{
+  "city": "Karachi",
+  "areas": ["Gulshan", "DHA", "Clifton", "Nazimabad"]
+}
+```
+
+---
+
+## 🔐 Authentication Endpoints
+
+### POST `/auth/register`
+
+Register new user or vendor
+
+- **Auth**: Not required
+- **Body**:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe",
+  "phone": "+923001234567",
+  "role": "user" // or "vendor"
+}
+```
+
+- **Returns**: JWT token + user info
+
+### POST `/auth/login`
+
+Login to get JWT token
+
+- **Auth**: Not required
+- **Body**:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+- **Returns**: JWT token + user info
+
+### GET `/auth/me`
+
+Get current user information
+
+- **Auth**: Required (Bearer token)
+- **Returns**: User details including `vendor_profile` for vendors
+
+**Response Example (Vendor):**
+
+```json
+{
+  "id": "507f1f77bcf86cd799439012",
+  "email": "vendor@example.com",
+  "name": "John Vendor",
+  "role": "vendor",
+  "phone": "+923001234567",
+  "vendor_profile": {
+    "id": "507f1f77bcf86cd799439013",
+    "business_name": "Royal Photography",
+    "category": ["photography"],
+    "approval_status": "pending",
+    "city": "Karachi",
+    "area": "Gulshan"
+  }
+}
+```
+
+### POST `/auth/reset-password`
+
+Reset user password
+
+- **Auth**: Not required
+- **Body**:
+
+```json
+{
+  "email": "user@example.com",
+  "new_password": "newpassword123"
+}
+```
+
+---
+
+## 🏢 Vendor Endpoints
+
+### POST `/vendors`
+
+Create vendor profile (Vendor only)
+
+- **Auth**: Required (Vendor role)
+- **Body**:
+
+```json
+{
+  "business_name": "Royal Photography",
+  "category": ["photography", "videography"],
+  "services": "Professional photography services...",
+  "city": "Karachi",
+  "area": "Gulshan",
+  "event_types": ["wedding", "engagement"],
+  "cnic_number": "42101-1234567-1",
+  "cnic_front_image": "/uploads/cnic_front.jpg",
+  "cnic_back_image": "/uploads/cnic_back.jpg",
+  "whatsapp_number": "+923001234567",
+  "basic_package": {
+    "description": "Basic package",
+    "base_price": 50000.0,
+    "per_head_price": 500.0
+  },
+  "premium_package": {
+    "description": "Premium package",
+    "base_price": 100000.0,
+    "per_head_price": 800.0
+  },
+  "availability": "Available"
+}
+```
+
+- **Returns**: Vendor profile with `approval_status: "pending"` (needs admin approval)
+
+### GET `/vendors/search`
+
+Search vendors with filters (Public)
+
+- **Auth**: Not required
+- **Query Params**:
+  - `category` - Filter by category
+  - `city` - Filter by city
+  - `area` - Filter by area
+  - `event_type` - Filter by event type
+  - `min_rating` - Minimum rating (1-5)
+  - `approved_only` - Show only approved vendors (default: true)
+- **Returns**: List of vendor profiles with ratings
+
+**Example:**
+
+```
+GET /vendors/search?category=photography&city=Karachi&area=Gulshan&min_rating=4
+```
+
+### GET `/vendors/{id}`
+
+Get vendor profile by ID (Public)
+
+- **Auth**: Not required
+- **Returns**: Vendor profile with average rating and reviews
+
+### GET `/vendors/me`
+
+Get my vendor profile (Vendor only)
+
+- **Auth**: Required (Vendor role)
+- **Returns**: My vendor profile
+
+### PUT `/vendors/{id}`
+
+Update vendor profile (Vendor only)
+
+- **Auth**: Required (Vendor role, own profile only)
+- **Body**: Partial update allowed
+
+```json
+{
+  "business_name": "Updated Name",
+  "pricing": "PKR 60,000 - 180,000"
+}
+```
+
+### POST `/vendors/{id}/portfolio`
+
+Upload portfolio image (Vendor only)
+
+- **Auth**: Required (Vendor role)
+- **Body**: Form data with image file
+- **Accepts**: JPEG, PNG, WebP
+- **Returns**: File path
+
+---
+
+## 📋 Inquiry/Booking Endpoints
+
+### POST `/inquiries`
+
+Send booking inquiry to vendor (User only)
+
+- **Auth**: Required (User role)
+- **Body**:
+
+```json
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "event_type": "wedding",
+  "event_date": "2026-06-15",
+  "selected_package": "premium",
+  "number_of_guests": 200,
+  "message": "I need photography services for my wedding"
+}
+```
+
+**Required Fields:**
+
+- `vendor_id` - Vendor's ID
+
+- `event_type` - Type of event (wedding, engagement, etc.)
+
+- `event_date` - Date in YYYY-MM-DD format
+
+- `selected_package` - Package type: "basic", "premium", or "luxury"
+
+- `number_of_guests` - Number of guests (must be &gt; 0)
+
+- `message` - Message to vendor (min 10 characters)
+
+- **Returns**: Inquiry with status "pending" and calculated `estimated_cost`
+
+### GET `/inquiries/me`
+
+Get my inquiries as user (User only)
+
+- **Auth**: Required (User role)
+- **Returns**: List of inquiries sent by user
+
+### GET `/inquiries/vendor/me`
+
+Get inquiries for my vendor profile (Vendor only)
+
+- **Auth**: Required (Vendor role)
+- **Returns**: List of inquiries received by vendor
+
+### GET `/inquiries/{id}`
+
+Get inquiry details
+
+- **Auth**: Required (User or Vendor, must be involved in inquiry)
+- **Returns**: Inquiry details
+
+### PUT `/inquiries/{id}`
+
+Respond to inquiry (Vendor only)
+
+- **Auth**: Required (Vendor role)
+- **Body**:
+
+```json
+{
+  "status": "accepted", // or "declined"
+  "vendor_response": "Yes, I'm available on this date!"
+}
+```
+
+- **Returns**: Updated inquiry
+
+---
+
+## ⭐ Review Endpoints
+
+### POST `/reviews`
+
+Leave review for vendor (User only)
+
+- **Auth**: Required (User role)
+- **Body**:
+
+```json
+{
+  "vendor_id": "507f1f77bcf86cd799439012",
+  "rating": 5,
+  "comment": "Excellent service! Highly recommended."
+}
+```
+
+- **Returns**: Review with user name
+
+### GET `/reviews/vendor/{vendor_id}`
+
+Get all reviews for a vendor (Public)
+
+- **Auth**: Not required
+- **Returns**: List of reviews with user names and ratings
+
+### DELETE `/reviews/{id}`
+
+Delete review (Admin only)
+
+- **Auth**: Required (Admin role)
+- **Returns**: Success message
+
+---
+
+## 👨‍💼 Admin Endpoints
+
+### GET `/admin/vendors/pending`
+
+Get vendors pending approval (Admin only)
+
+- **Auth**: Required (Admin role)
+- **Returns**: List of unapproved vendors
+
+### PUT `/admin/vendors/{id}/approve`
+
+Approve vendor (Admin only)
+
+- **Auth**: Required (Admin role)
+- **Returns**: Success message
+
+### PUT `/admin/vendors/{id}/reject`
+
+Reject/unapprove vendor (Admin only)
+
+- **Auth**: Required (Admin role)
+- **Returns**: Success message
+
+### GET `/admin/stats`
+
+Get platform statistics (Admin only)
+
+- **Auth**: Required (Admin role)
+- **Returns**:
+
+```json
+{
+  "users": {
+    "total_users": 100,
+    "total_vendors": 50,
+    "total_admins": 2
+  },
+  "vendors": {
+    "approved": 40,
+    "pending": 10,
+    "total": 50
+  },
+  "inquiries": {
+    "total": 200,
+    "pending": 50,
+    "accepted": 120
+  },
+  "reviews": {
+    "total": 150
+  },
+  "top_vendors": [...]
+}
+```
+
+---
+
+## 🏥 Utility Endpoints
+
+### GET `/`
+
+API root information
+
+- **Auth**: Not required
+- **Returns**: API name, version, docs links
+
+### GET `/health`
+
+Health check
+
+- **Auth**: Not required
+- **Returns**: Health status
+
+---
+
+## 🔑 Authentication
+
+All protected endpoints require Bearer token:
+
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+Get token from `/auth/register` or `/auth/login`
+
+---
+
+## 📱 Flutter Integration Tips
+
+### 1\. Homepage
+
+```dart
+// Load homepage recommendations
+final response = await http.get(
+  Uri.parse('$baseUrl/home/recommendations')
+);
+```
+
+### 2\. Search Vendors
+
+```dart
+// Search with filters
+final response = await http.get(
+  Uri.parse('$baseUrl/vendors/search?category=photography&city=Karachi&area=Gulshan')
+);
+```
+
+### 3\. Send Inquiry
+
+```dart
+// Send booking inquiry
+final response = await http.post(
+  Uri.parse('$baseUrl/inquiries'),
+  headers: {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json'
+  },
+  body: jsonEncode({
+    'vendor_id': vendorId,
+    'event_type': 'wedding',
+    'event_date': '2026-06-15',
+    'selected_package': 'premium',
+    'number_of_guests': 200,
+    'message': 'I need photography services for my wedding'
+  })
+);
+```
+
+### 4\. Leave Review
+
+```dart
+// Leave 5-star review
+final response = await http.post(
+  Uri.parse('$baseUrl/reviews'),
+  headers: {'Authorization': 'Bearer $token'},
+  body: jsonEncode({
+    'vendor_id': vendorId,
+    'rating': 5,
+    'comment': 'Excellent service!'
+  })
+);
+```
+
+---
+
+## 📊 Total Endpoints: 27
+
+- **Homepage**: 3 endpoints
+- **Authentication**: 4 endpoints
+- **Vendors**: 6 endpoints
+- **Inquiries**: 5 endpoints
+- **Reviews**: 3 endpoints
+- **Admin**: 4 endpoints
+- **Utility**: 2 endpoints
+
+---
+
+## 🎯 All Endpoints Are Public Unless Specified
+
+Endpoints marked as (Public) don't require authentication and can be called directly from Flutter.
