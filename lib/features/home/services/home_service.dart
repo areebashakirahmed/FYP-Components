@@ -5,6 +5,7 @@ import 'package:mehfilista/features/home/models/home_recommendations_model.dart'
 import 'package:mehfilista/features/home/models/location_model.dart';
 import 'package:mehfilista/utils/constants/api_constants.dart';
 import 'package:mehfilista/utils/api_result.dart';
+import 'package:mehfilista/utils/api_error_handler.dart';
 
 class HomeService {
   /// Get homepage recommendations including featured vendors, categories, and stats
@@ -19,12 +20,10 @@ class HomeService {
         final data = jsonDecode(response.body);
         return ApiResult.success(HomeRecommendationsModel.fromJson(data));
       } else {
-        return ApiResult.failure(
-          'Failed to load recommendations: ${response.body}',
-        );
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -41,10 +40,10 @@ class HomeService {
         final categories = data.map((e) => CategoryModel.fromJson(e)).toList();
         return ApiResult.success(categories);
       } else {
-        return ApiResult.failure('Failed to load categories: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -61,10 +60,10 @@ class HomeService {
         final locations = data.map((e) => LocationModel.fromJson(e)).toList();
         return ApiResult.success(locations);
       } else {
-        return ApiResult.failure('Failed to load locations: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:mehfilista/features/location/models/city_model.dart';
 import 'package:mehfilista/utils/constants/api_constants.dart';
 import 'package:mehfilista/utils/api_result.dart';
+import 'package:mehfilista/utils/api_error_handler.dart';
 
 class LocationService {
   /// Get all available cities
@@ -20,10 +21,10 @@ class LocationService {
         final cityList = List<String>.from(data['cities'] ?? []);
         return ApiResult.success(cityList);
       } else {
-        return ApiResult.failure('Failed to load cities: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -42,10 +43,10 @@ class LocationService {
         final areaList = List<String>.from(data['areas'] ?? []);
         return ApiResult.success(areaList);
       } else {
-        return ApiResult.failure('Failed to load areas: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -69,10 +70,10 @@ class LocationService {
         final cities = data.map((e) => CityModel.fromJson(e)).toList();
         return ApiResult.success(cities);
       } else {
-        return ApiResult.failure('Failed to load locations: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 }

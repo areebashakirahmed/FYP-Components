@@ -1,0 +1,470 @@
+# Mehfilista API - Error Codes & Messages
+
+Complete reference of all possible error responses from the API for Flutter app implementation.
+
+## Version
+
+**v1.1.2** - Updated: February 8, 2026
+
+## Production URL
+
+```
+http://20.83.180.133:9000
+```
+
+---
+
+## Error Response Format
+
+All errors follow this JSON structure:
+
+```json
+{
+  "detail": "Human-readable error message"
+}
+```
+
+OR with validation errors:
+
+```json
+{
+  "detail": "Request validation failed",
+  "errors": [
+    {
+      "type": "missing",
+      "loc": ["body", "field_name"],
+      "msg": "Field required",
+      "input": {...}
+    }
+  ]
+}
+```
+
+---
+
+## HTTP Status Codes
+
+| Code | Meaning | When to Show |
+| --- | --- | --- |
+| 200 | Success | Normal operation |
+| 201 | Created | Resource created successfully |
+| 400 | Bad Request | Show error message to user |
+| 401 | Unauthorized | Redirect to login |
+| 403 | Forbidden | Show "Access Denied" |
+| 404 | Not Found | Show "Not Found" screen |
+| 422 | Validation Error | Show validation messages |
+| 500 | Server Error | Show "Something went wrong" |
+
+---
+
+## Authentication Errors
+
+### POST `/auth/register`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 400 | "Email already registered" | Show: "This email is already in use" |
+| 422 | "Field required" | Highlight missing field |
+| 422 | "Invalid email format" | Show: "Please enter a valid email" |
+| 422 | "Password too short" | Show: "Password must be at least 8 characters" |
+
+**Example:**
+
+```json
+{
+  "detail": "Email already registered"
+}
+```
+
+### POST `/auth/login`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Invalid email or password" | Show: "Incorrect email or password" |
+| 422 | "Field required" | Highlight missing field |
+
+**Example:**
+
+```json
+{
+  "detail": "Invalid email or password"
+}
+```
+
+### GET `/auth/me`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Invalid or expired token" | Logout & redirect to login |
+| 401 | "Token has expired" | Refresh token or logout |
+
+---
+
+## Vendor Errors
+
+### POST `/vendors` (Create Vendor Profile)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Only vendors can create vendor profiles" | Show: "This feature is only for vendors" |
+| 400 | "Vendor profile already exists" | Show: "You already have a vendor profile" |
+| 422 | "Field required" | Highlight missing fields |
+| 422 | "Invalid package data" | Show: "Please check package details" |
+
+**Validation Errors:**
+
+```json
+{
+  "detail": "Request validation failed",
+  "errors": [
+    {
+      "type": "missing",
+      "loc": ["body", "business_name"],
+      "msg": "Field required"
+    }
+  ]
+}
+```
+
+### GET `/vendors/search`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 200 | Empty array `[]` | Show: "No vendors found. Try different filters" |
+| 400 | "Invalid filter parameters" | Reset filters |
+
+### GET `/vendors/{id}`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 404 | "Vendor not found" | Show: "This vendor is no longer available" |
+| 400 | "Invalid vendor ID format" | Show: "Invalid vendor" |
+
+### PUT `/vendors/{id}` (Update Profile)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Not authorized to edit this vendor" | Show: "You can only edit your own profile" |
+| 404 | "Vendor not found" | Show: "Vendor profile not found" |
+
+---
+
+## Inquiry/Booking Errors
+
+### POST `/inquiries` (Send Inquiry)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Only users can send inquiries" | Show: "Please switch to user account" |
+| 404 | "Vendor not found" | Show: "This vendor is not available" |
+| 422 | "Field required" | Highlight required fields |
+| 422 | "Invalid package selection" | Show: "Please select a valid package" |
+| 422 | "Number of guests must be greater than 0" | Show validation message |
+| 422 | "Message must be at least 10 characters" | Show character count |
+
+**Required Fields Error:**
+
+```json
+{
+  "detail": "Request validation failed",
+  "errors": [
+    {
+      "type": "missing",
+      "loc": ["body", "selected_package"],
+      "msg": "Field required"
+    },
+    {
+      "type": "missing",
+      "loc": ["body", "number_of_guests"],
+      "msg": "Field required"
+    }
+  ]
+}
+```
+
+### GET `/inquiries/me` (User Inquiries)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Only users can view their inquiries" | Show: "Access denied" |
+| 200 | Empty array `[]` | Show: "You haven't sent any inquiries yet" |
+
+### GET `/inquiries/vendor/me` (Vendor Inquiries)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Only vendors can view vendor inquiries" | Show: "Access denied" |
+| 200 | Empty array `[]` | Show: "No inquiries received yet" (when vendor has no profile) |
+
+**Note:** This endpoint now returns an empty array instead of 404 when vendor profile doesn't exist yet.
+
+### PUT `/inquiries/{id}` (Vendor Response)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Not authorized to respond to this inquiry" | Show: "You can only respond to your own inquiries" |
+| 404 | "Inquiry not found" | Show: "Inquiry not found" |
+| 422 | "Invalid status. Must be accepted or declined" | Show validation error |
+
+---
+
+## Review Errors
+
+### POST `/reviews` (Leave Review)
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Only users can leave reviews" | Show: "Please switch to user account" |
+| 404 | "Vendor not found" | Show: "Vendor not found" |
+| 400 | "You have already reviewed this vendor" | Show: "You've already reviewed this vendor" |
+| 422 | "Rating must be between 1 and 5" | Show rating validation |
+| 422 | "Comment must be at least 10 characters" | Show character count |
+
+**Example:**
+
+```json
+{
+  "detail": "You have already reviewed this vendor"
+}
+```
+
+### GET `/reviews/vendor/{vendor_id}`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 404 | "Vendor not found" | Show: "Vendor not found" |
+| 200 | Empty array `[]` | Show: "No reviews yet. Be the first to review!" |
+
+---
+
+## Location Errors
+
+### GET `/locations/cities`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 200 | `{"cities": []}` | Show: "No cities available" |
+
+### GET `/locations/cities/{city}/areas`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 404 | "City not found" | Show: "City not found" |
+| 200 | `{"city": "...", "areas": []}` | Show: "No areas available in this city" |
+
+---
+
+## File Upload Errors
+
+### POST `/upload/image`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 400 | "No file provided" | Show: "Please select an image" |
+| 400 | "Invalid file type. Only JPEG, PNG, WebP allowed" | Show: "Please select a valid image (JPEG, PNG, or WebP)" |
+| 400 | "File too large. Maximum size is 10MB" | Show: "Image is too large. Max 10MB" |
+| 500 | "Failed to upload file" | Show: "Upload failed. Please try again" |
+
+---
+
+## Admin Errors
+
+### All Admin Endpoints
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 401 | "Authentication required" | Redirect to login |
+| 403 | "Admin access required" | Show: "Access denied. Admin only" |
+
+### PUT `/admin/vendors/{vendor_id}/approve`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 404 | "Vendor not found" | Show: "Vendor not found" |
+| 200 | Success | Show: "Vendor approved successfully" |
+
+### PUT `/admin/vendors/{vendor_id}/reject`
+
+| Status | Error Detail | Flutter Action |
+| --- | --- | --- |
+| 404 | "Vendor not found" | Show: "Vendor not found" |
+| 422 | "Rejection reason required" | Show: "Please provide a reason" |
+
+---
+
+## Common Error Patterns
+
+### Invalid ObjectId Format
+
+```json
+{
+  "detail": "Invalid ID format. Must be a valid ObjectId",
+  "error": "'xyz' is not a valid ObjectId, it must be a 12-byte input or a 24-character hex string"
+}
+```
+
+**Flutter Action:** Show: "Invalid ID format"
+
+### Token Expired
+
+```json
+{
+  "detail": "Token has expired"
+}
+```
+
+**Flutter Action:** Logout user, clear token, redirect to login
+
+### Network Errors (No Response)
+
+**Flutter Action:** Show: "No internet connection. Please check your network"
+
+### 500 Server Errors
+
+```json
+{
+  "detail": "Internal server error"
+}
+```
+
+**Flutter Action:** Show: "Something went wrong. Please try again later"
+
+---
+
+## Flutter Implementation Guide
+
+### 1\. Create Error Handler Class
+
+```dart
+class ApiErrorHandler {
+  static String getErrorMessage(Response response) {
+    switch (response.statusCode) {
+      case 400:
+        return _handleBadRequest(response);
+      case 401:
+        return "Please login to continue";
+      case 403:
+        return "Access denied";
+      case 404:
+        return "Not found";
+      case 422:
+        return _handleValidationError(response);
+      case 500:
+        return "Something went wrong. Please try again";
+      default:
+        return "An unexpected error occurred";
+    }
+  }
+
+  static String _handleBadRequest(Response response) {
+    final data = jsonDecode(response.body);
+    return data['detail'] ?? "Bad request";
+  }
+
+  static String _handleValidationError(Response response) {
+    final data = jsonDecode(response.body);
+    if (data['errors'] != null) {
+      // Return first error message
+      return data['errors'][0]['msg'];
+    }
+    return data['detail'] ?? "Validation error";
+  }
+}
+```
+
+### 2\. Show Appropriate UI
+
+```dart
+// For 404 - Show empty state
+if (statusCode == 404) {
+  return Center(
+    child: Column(
+      children: [
+        Icon(Icons.search_off, size: 100, color: Colors.grey),
+        Text("Not Found"),
+        Text("The item you're looking for doesn't exist")
+      ]
+    )
+  );
+}
+
+// For empty results - Show empty state
+if (data.isEmpty) {
+  return Center(
+    child: Column(
+      children: [
+        Icon(Icons.inbox, size: 100, color: Colors.grey),
+        Text("No Results"),
+        Text("Try adjusting your filters")
+      ]
+    )
+  );
+}
+
+// For errors - Show Snackbar
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(content: Text(errorMessage))
+);
+```
+
+### 3\. Handle Token Expiry
+
+```dart
+if (response.statusCode == 401) {
+  // Clear token
+  await storage.delete(key: 'token');
+  // Redirect to login
+  Navigator.pushReplacementNamed(context, '/login');
+}
+```
+
+---
+
+## Testing Errors
+
+Use these curl commands to test error handling:
+
+```bash
+# Test 401 Unauthorized
+curl -X GET http://20.83.180.133:9000/auth/me
+
+# Test 404 Not Found
+curl -X GET http://20.83.180.133:9000/vendors/invalid_id
+
+# Test 422 Validation
+curl -X POST http://20.83.180.133:9000/inquiries \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"vendor_id":"123"}'
+
+# Test Empty Results
+curl -X GET "http://20.83.180.133:9000/vendors/search?category=nonexistent"
+```
+
+---
+
+## Best Practices for Flutter
+
+1. **Always show user-friendly messages** - Don't show raw API errors
+2. **Handle empty states** - Show helpful UI when lists are empty
+3. **Cache data** - Reduce API calls and handle offline mode
+4. **Retry logic** - Implement retry for network failures
+5. **Loading states** - Show loaders during API calls
+6. **Error logging** - Log errors for debugging (use Firebase Crashlytics)
+7. **Token refresh** - Implement token refresh before expiry
+
+---
+
+## Support
+
+For any additional error scenarios not covered here, contact the backend team.
+
+**Last Updated:** February 8, 2026 **API Version:** v1.1.2

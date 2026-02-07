@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:mehfilista/features/vendor/models/vendor_model.dart';
 import 'package:mehfilista/utils/constants/api_constants.dart';
 import 'package:mehfilista/utils/api_result.dart';
+import 'package:mehfilista/utils/api_error_handler.dart';
 
 class VendorService {
   /// Search vendors with filters
@@ -41,10 +42,10 @@ class VendorService {
         final vendors = data.map((e) => VendorModel.fromJson(e)).toList();
         return ApiResult.success(vendors);
       } else {
-        return ApiResult.failure('Failed to search vendors: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -60,12 +61,10 @@ class VendorService {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
       } else {
-        return ApiResult.failure(
-          'Failed to get vendor details: ${response.body}',
-        );
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -129,10 +128,10 @@ class VendorService {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
       } else {
-        return ApiResult.failure('Failed to create vendor: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -151,12 +150,10 @@ class VendorService {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
       } else {
-        return ApiResult.failure(
-          'Failed to get vendor profile: ${response.body}',
-        );
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -204,10 +201,10 @@ class VendorService {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
       } else {
-        return ApiResult.failure('Failed to update vendor: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -234,26 +231,11 @@ class VendorService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return ApiResult.success(VendorModel.fromJson(data));
-      } else if (response.statusCode == 403) {
-        return ApiResult.failure('You can only upload to your own portfolio');
-      } else if (response.statusCode == 400) {
-        return ApiResult.failure(
-          'Please upload a valid image (JPEG, PNG, or WebP)',
-        );
       } else {
-        // Try to parse error message from response
-        try {
-          final errorData = jsonDecode(response.body);
-          final detail = errorData['detail'] ?? 'Failed to upload image';
-          return ApiResult.failure(detail.toString());
-        } catch (_) {
-          return ApiResult.failure(
-            'Failed to upload image (${response.statusCode})',
-          );
-        }
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -281,10 +263,10 @@ class VendorService {
         final filePath = data['file_path'] ?? data['url'] ?? '';
         return ApiResult.success(filePath);
       } else {
-        return ApiResult.failure('Upload failed: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -317,10 +299,10 @@ class VendorService {
             .toList();
         return ApiResult.success(paths);
       } else {
-        return ApiResult.failure('Upload failed: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -341,10 +323,10 @@ class VendorService {
       if (response.statusCode == 200) {
         return ApiResult.success(true);
       } else {
-        return ApiResult.failure('Failed to delete: ${response.body}');
+        return ApiResult.failure(ApiErrorHandler.getErrorMessage(response));
       }
     } catch (e) {
-      return ApiResult.failure('Network error: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 
@@ -393,7 +375,7 @@ class VendorService {
         return ApiResult.failure('Failed to upload CNIC images');
       }
     } catch (e) {
-      return ApiResult.failure('Error uploading CNIC: $e');
+      return ApiResult.failure(ApiErrorHandler.getNetworkErrorMessage(e));
     }
   }
 }

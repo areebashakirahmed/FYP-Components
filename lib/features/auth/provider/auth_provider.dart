@@ -11,6 +11,7 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _error;
+  bool _sessionExpired = false;
 
   UserModel? get user => _user;
   String? get token => _token;
@@ -19,6 +20,32 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null && _token != null;
   bool get isVendor => _user?.role == 'vendor';
   bool get isUser => _user?.role == 'user';
+
+  /// True when a 401 was detected — UI should redirect to login
+  bool get sessionExpired => _sessionExpired;
+
+  /// Call from UI after redirecting to login to reset the flag
+  void clearSessionExpired() {
+    _sessionExpired = false;
+    notifyListeners();
+  }
+
+  /// Check if an error message indicates the session expired (401)
+  bool _isSessionExpiredError(String errorMessage) {
+    return errorMessage.contains('session has expired') ||
+        errorMessage.contains('Please login') ||
+        errorMessage.contains('login again');
+  }
+
+  /// Handle session expiry: clear token & user, set flag for UI
+  Future<void> _handleSessionExpiry() async {
+    await _userStorage.deleteUser();
+    _user = null;
+    _token = null;
+    _sessionExpired = true;
+    _error = 'Your session has expired. Please login again';
+    notifyListeners();
+  }
 
   Future<void> loadUser() async {
     _isLoading = true;
@@ -42,6 +69,12 @@ class AuthProvider extends ChangeNotifier {
           await _userStorage.saveUser(_user!);
         }
       } catch (e) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        if (_isSessionExpiredError(msg)) {
+          await _handleSessionExpiry();
+          _isLoading = false;
+          return;
+        }
         // Token invalid, logout
         await logout();
       }
@@ -159,7 +192,13 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      final msg = e.toString().replaceAll('Exception: ', '');
+      if (_isSessionExpiredError(msg)) {
+        await _handleSessionExpiry();
+        _isLoading = false;
+        return false;
+      }
+      _error = msg;
       _isLoading = false;
       notifyListeners();
       return false;
@@ -187,7 +226,13 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      final msg = e.toString().replaceAll('Exception: ', '');
+      if (_isSessionExpiredError(msg)) {
+        await _handleSessionExpiry();
+        _isLoading = false;
+        return false;
+      }
+      _error = msg;
       _isLoading = false;
       notifyListeners();
       return false;
