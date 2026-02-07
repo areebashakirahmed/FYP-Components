@@ -5,7 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/main_shell.dart';
-import 'package:mehfilista/features/vendor/views/vendor_verification_pending_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/features/onboarding/views/onboarding_screen.dart';
 import 'package:provider/provider.dart';
@@ -44,45 +43,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Navigate based on auth status
     if (authProvider.isAuthenticated) {
-      // Check if vendor is approved
-      if (authProvider.isVendor) {
-        final user = authProvider.user;
-        // Block vendors that are not approved
-        if (user?.vendorProfile != null) {
-          final approvalStatus = user!.vendorProfile!.approvalStatus;
-
-          // Only allow approved vendors to access the app
-          if (approvalStatus.name == 'approved') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const MainShell()),
-            );
-          } else {
-            // Show verification pending/rejected screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VendorVerificationPendingScreen(
-                  vendorEmail: user.email,
-                  approvalStatus: approvalStatus.name,
-                ),
-              ),
-            );
-          }
-        } else {
-          // Vendor with no profile - shouldn't happen but navigate to main
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainShell()),
-          );
-        }
-      } else {
-        // Regular user - allow access
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainShell()),
-        );
-      }
+      // Allow all authenticated users (including unapproved vendors) to access the app
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
     } else {
       Navigator.pushReplacement(
         context,

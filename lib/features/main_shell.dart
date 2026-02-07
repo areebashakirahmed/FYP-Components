@@ -65,6 +65,11 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
             ),
+          // Vendor verification banner
+          if (isVendor && authProvider.user?.vendorProfile != null)
+            _buildVerificationBanner(
+              authProvider.user!.vendorProfile!.approvalStatus.name,
+            ),
           Expanded(
             child: IndexedStack(index: _currentIndex, children: screens),
           ),
@@ -86,6 +91,66 @@ class _MainShellState extends State<MainShell> {
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
             child: isVendor ? _buildVendorNavBar() : _buildUserNavBar(),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationBanner(String approvalStatus) {
+    // Only show banner if not approved
+    if (approvalStatus == 'approved') {
+      return const SizedBox.shrink();
+    }
+
+    final isPending = approvalStatus == 'pending';
+
+    return Container(
+      width: double.infinity,
+      color: isPending ? Colors.amber.shade100 : Colors.red.shade100,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            Icon(
+              isPending ? Icons.hourglass_bottom : Icons.warning,
+              color: isPending ? Colors.amber.shade900 : Colors.red.shade900,
+              size: 20.sp,
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isPending
+                        ? 'Verification Pending'
+                        : 'Verification Rejected',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: isPending
+                          ? Colors.amber.shade900
+                          : Colors.red.shade900,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    isPending
+                        ? 'Your profile is not verified yet. Please wait for admin verification.'
+                        : 'Your profile was rejected. Please contact support at Mehfilista@gmail.com',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: isPending
+                          ? Colors.amber.shade800
+                          : Colors.red.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
