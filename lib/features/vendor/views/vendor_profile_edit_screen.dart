@@ -5,6 +5,7 @@ import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
+import 'package:mehfilista/features/vendor/views/vendor_portfolio_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
 
@@ -278,6 +279,34 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
                 heading: 'About Your Business (Optional)',
                 controller: _descriptionController,
                 hintText: 'Tell customers about your business...',
+              ),
+              SizedBox(height: 24.h),
+
+              // Portfolio images
+              Text(
+                'Portfolio Images',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.black,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VendorPortfolioScreen(),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.add_photo_alternate, size: 20.sp),
+                label: Text('Add / Manage portfolio images'),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                  foregroundColor: AppColors.primary,
+                ),
               ),
               SizedBox(height: 32.h),
 

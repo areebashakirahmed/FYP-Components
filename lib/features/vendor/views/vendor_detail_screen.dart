@@ -1229,13 +1229,36 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             return Center(child: CircularProgressIndicator());
                           }
 
-                          if (reviewProvider.vendorReviews.isEmpty) {
+                          if (reviewProvider.hasError ||
+                              reviewProvider.vendorReviews.isEmpty) {
                             return Container(
                               padding: EdgeInsets.all(24.w),
                               alignment: Alignment.center,
-                              child: Text(
-                                'No reviews yet. Be the first to review!',
-                                style: TextStyle(color: Colors.grey),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.rate_review_outlined,
+                                    size: 48.sp,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  Text(
+                                    'No Reviews Yet',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    'Be the first to review!',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13.sp,
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           }

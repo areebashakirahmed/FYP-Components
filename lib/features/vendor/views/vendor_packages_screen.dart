@@ -225,6 +225,10 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
                     TextFormField(
                       controller: featuresController,
                       maxLines: 4,
+                      style: TextStyle(
+                        color: AppColors.black,
+                        fontSize: 14.sp,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Features (one per line)',
                         hintText:
@@ -233,6 +237,8 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         helperText: 'Enter each feature on a new line',
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
                     ),
                     SizedBox(height: 20.h),

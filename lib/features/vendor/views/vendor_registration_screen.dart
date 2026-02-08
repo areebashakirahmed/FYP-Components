@@ -479,13 +479,19 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'Description',
+            'Short Service Description',
             style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            '250–500 characters recommended',
+            style: TextStyle(fontSize: 12.sp, color: Colors.grey),
           ),
           SizedBox(height: 8.h),
           TextField(
             controller: _descriptionController,
             maxLines: 4,
+            maxLength: 500,
             decoration: InputDecoration(
               hintText: 'About your business',
               filled: true,
@@ -493,6 +499,7 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.r),
               ),
+              counterText: '',
             ),
           ),
           SizedBox(height: 16.h),
@@ -694,6 +701,11 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
           Text(
             'CNIC Front Image',
             style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'JPG or PNG supported',
+            style: TextStyle(fontSize: 12.sp, color: Colors.grey),
           ),
           SizedBox(height: 8.h),
           _buildImagePicker(

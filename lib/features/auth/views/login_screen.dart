@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/auth/views/forgotpw_screen.dart';
-import 'package:mehfilista/features/main_shell.dart';
+import 'package:mehfilista/features/auth/views/auth_gate_screen.dart';
 import 'package:mehfilista/features/profile/role_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Fluttertoast.showToast(msg: 'Login successful!');
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MainShell()),
+        MaterialPageRoute(builder: (_) => const AuthGateScreen()),
         (route) => false,
       );
     } else if (mounted && authProvider.error != null) {

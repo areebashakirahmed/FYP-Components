@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
-import 'package:mehfilista/features/main_shell.dart';
+import 'package:mehfilista/features/auth/views/auth_gate_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/features/onboarding/views/onboarding_screen.dart';
 import 'package:provider/provider.dart';
@@ -43,10 +43,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Navigate based on auth status
     if (authProvider.isAuthenticated) {
-      // Allow all authenticated users (including unapproved vendors) to access the app
+      // AuthGateScreen shows MainShell or blocks unverified vendors with Verification Pending
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainShell()),
+        MaterialPageRoute(builder: (_) => const AuthGateScreen()),
       );
     } else {
       Navigator.pushReplacement(

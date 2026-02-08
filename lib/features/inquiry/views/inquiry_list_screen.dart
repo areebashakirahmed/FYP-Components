@@ -89,12 +89,21 @@ class _InquiryListScreenState extends State<InquiryListScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64.sp, color: Colors.grey),
+                  Icon(Icons.inbox_outlined, size: 64.sp, color: Colors.grey),
                   SizedBox(height: 16.h),
                   Text(
-                    provider.error ?? 'An error occurred',
-                    style: TextStyle(color: Colors.grey, fontSize: 16.sp),
+                    isVendor ? 'No Inquiries Yet' : 'No inquiries yet',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
                     textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Tap Retry to refresh',
+                    style: TextStyle(color: Colors.grey, fontSize: 13.sp),
                   ),
                   SizedBox(height: 16.h),
                   ElevatedButton(
@@ -138,8 +147,16 @@ class _InquiryListScreenState extends State<InquiryListScreen>
             Icon(Icons.inbox_outlined, size: 64.sp, color: Colors.grey),
             SizedBox(height: 16.h),
             Text(
-              'No inquiries found',
+              isVendor ? 'No Inquiries Yet' : 'No inquiries yet',
               style: TextStyle(color: Colors.grey, fontSize: 16.sp),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              isVendor
+                  ? 'Customer inquiries will appear here'
+                  : 'Your inquiries will appear here',
+              style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

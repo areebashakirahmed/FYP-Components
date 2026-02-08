@@ -4,7 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/auth/views/login_screen.dart';
 import 'package:mehfilista/features/location/providers/location_provider.dart';
-import 'package:mehfilista/features/main_shell.dart';
+import 'package:mehfilista/features/auth/views/auth_gate_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:mehfilista/components/custom_button.dart';
 import 'package:mehfilista/components/custom_textfield.dart';
@@ -74,7 +74,7 @@ class _SignupScreenState extends State<SignupScreen> {
       Fluttertoast.showToast(msg: 'Registration successful!');
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MainShell()),
+        MaterialPageRoute(builder: (_) => const AuthGateScreen()),
         (route) => false,
       );
     } else if (mounted && authProvider.error != null) {
