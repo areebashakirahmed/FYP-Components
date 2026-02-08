@@ -71,7 +71,12 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
         authProvider.user?.vendorProfile?.approvalStatus ??
         vendorProvider.myVendorProfile?.approvalStatus;
 
-    if (approvalStatus != ApprovalStatus.approved) {
+    // Only block if vendor has submitted a profile and it's not approved yet
+    final hasVendorProfile =
+        authProvider.user?.vendorProfile != null ||
+        vendorProvider.myVendorProfile != null;
+
+    if (hasVendorProfile && approvalStatus != ApprovalStatus.approved) {
       return VendorVerificationPendingScreen(
         vendorEmail: authProvider.user?.email ?? '',
         approvalStatus: approvalStatus?.name ?? 'pending',
