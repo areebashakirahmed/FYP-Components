@@ -4,8 +4,10 @@ import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/home/views/home_screen.dart';
 import 'package:mehfilista/features/inquiry/views/inquiry_list_screen.dart';
 import 'package:mehfilista/features/profile/views/user_profile_screen.dart';
-import 'package:mehfilista/features/vendor/views/vendor_search_screen.dart';
+import 'package:mehfilista/features/vendor/models/vendor_model.dart';
+import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/features/vendor/views/vendor_dashboard_screen.dart';
+import 'package:mehfilista/features/vendor/views/vendor_search_screen.dart';
 import 'package:mehfilista/utils/constants/app_config.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
@@ -19,11 +21,33 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  bool _vendorProfileLoadTriggered = false;
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final vendorProvider = context.watch<VendorProvider>();
     final isVendor = authProvider.isVendor;
+
+    // For vendors: ensure we load vendor profile so we have approval status (in case /auth/me doesn't return vendor_profile)
+    if (isVendor &&
+        authProvider.token != null &&
+        !_vendorProfileLoadTriggered) {
+      _vendorProfileLoadTriggered = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && context.mounted) {
+          context.read<VendorProvider>().loadMyVendorProfile(authProvider.token!);
+        }
+      });
+    }
+
+    // Approval status: from /auth/me embed or from GET /vendors/me (VendorProvider)
+    final ApprovalStatus? approvalStatus = isVendor
+        ? (authProvider.user?.vendorProfile?.approvalStatus ??
+            vendorProvider.myVendorProfile?.approvalStatus)
+        : null;
+    final bool isVendorVerified =
+        approvalStatus == ApprovalStatus.approved;
 
     // Different screens for vendor vs user
     final List<Widget> userScreens = [
@@ -65,11 +89,9 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
             ),
-          // Vendor verification banner
-          if (isVendor && authProvider.user?.vendorProfile != null)
-            _buildVerificationBanner(
-              authProvider.user!.vendorProfile!.approvalStatus.name,
-            ),
+          // Vendor verification banner: show when vendor is not approved (pending, rejected, or status not loaded yet)
+          if (isVendor && !isVendorVerified)
+            _buildVerificationBanner(approvalStatus?.name ?? 'pending'),
           Expanded(
             child: IndexedStack(index: _currentIndex, children: screens),
           ),
@@ -125,7 +147,7 @@ class _MainShellState extends State<MainShell> {
                 children: [
                   Text(
                     isPending
-                        ? 'Verification Pending'
+                        ? 'Not verified yet'
                         : 'Verification Rejected',
                     style: TextStyle(
                       fontSize: 13.sp,
@@ -138,7 +160,7 @@ class _MainShellState extends State<MainShell> {
                   SizedBox(height: 2.h),
                   Text(
                     isPending
-                        ? 'Your profile is not verified yet. Please wait for admin verification.'
+                        ? 'Admin will verify your profile, then you can use the app fully.'
                         : 'Your profile was rejected. Please contact support at Mehfilista@gmail.com',
                     style: TextStyle(
                       fontSize: 11.sp,
