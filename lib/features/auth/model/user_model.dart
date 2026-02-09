@@ -8,7 +8,8 @@ class UserModel {
   final String role;
   final String? city;
   final String? area;
-  final VendorModel? vendorProfile; // For vendors - contains approval status
+  final ApprovalStatus approvalStatus; // user-level (pending | approved | rejected)
+  final VendorModel? vendorProfile; // For vendors - contains approval_status
 
   UserModel({
     required this.id,
@@ -18,6 +19,7 @@ class UserModel {
     required this.role,
     this.city,
     this.area,
+    this.approvalStatus = ApprovalStatus.pending,
     this.vendorProfile,
   });
 
@@ -30,6 +32,7 @@ class UserModel {
       role: json['role'] ?? '',
       city: json['city'],
       area: json['area'],
+      approvalStatus: ApprovalStatus.fromString(json['approval_status']),
       vendorProfile:
           json['vendor_profile'] != null || json['vendorProfile'] != null
           ? VendorModel.fromJson(
@@ -48,7 +51,10 @@ class UserModel {
       'role': role,
       if (city != null) 'city': city,
       if (area != null) 'area': area,
+      'approval_status': approvalStatus.name,
       if (vendorProfile != null) 'vendor_profile': vendorProfile!.toJson(),
     };
   }
+
+  bool get isApproved => approvalStatus == ApprovalStatus.approved;
 }

@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vendor Profile Creation Schema",
+  "description": "Schema for POST /vendors endpoint - Vendor profile creation with CNIC verification",
+  "type": "object",
+  "required": [
+    "business_name",
+    "category",
+    "services",
+    "city",
+    "area",
+    "event_types",
+    "cnic_number",
+    "cnic_front_image",
+    "cnic_back_image",
+    "whatsapp_number"
+  ],
+  "properties": {
+    "business_name": {
+      "type": "string",
+      "minLength": 2,
+      "description": "Business/company name",
+      "example": "Royal Photography"
+    },
+    "category": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Array of categories (e.g., photography, videography, catering)",
+      "example": ["photography", "videography"]
+    },
+    "services": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Description of services offered (minimum 10 characters)",
+      "example": "Professional photography and videography for all events"
+    },
+    "city": {
+      "type": "string",
+      "description": "City name",
+      "example": "Karachi"
+    },
+    "area": {
+      "type": "string",
+      "description": "Area/locality within the city",
+      "example": "Gulshan-e-Iqbal"
+    },
+    "event_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Types of events the vendor covers",
+      "example": ["wedding", "engagement", "birthday"]
+    },
+    "cnic_number": {
+      "type": "string",
+      "pattern": "^\\d{5}-\\d{7}-\\d{1}$",
+      "description": "CNIC number in format XXXXX-XXXXXXX-X",
+      "example": "42101-1234567-1"
+    },
+    "cnic_front_image": {
+      "type": "string",
+      "description": "File path from POST /upload/image response (e.g., /uploads/abc123.jpg)",
+      "example": "/uploads/cnic_front_abc123def456.jpg"
+    },
+    "cnic_back_image": {
+      "type": "string",
+      "description": "File path from POST /upload/image response (e.g., /uploads/def456.jpg)",
+      "example": "/uploads/cnic_back_xyz789ghi012.jpg"
+    },
+    "whatsapp_number": {
+      "type": "string",
+      "description": "WhatsApp contact number with country code",
+      "example": "+923001234567"
+    },
+    "basic_package": {
+      "type": "object",
+      "description": "Optional basic pricing package",
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Package description (minimum 10 characters)"
+        },
+        "base_price": {
+          "type": "number",
+          "minimum": 0.01,
+          "description": "Base price in PKR"
+        },
+        "per_head_price": {
+          "type": "number",
+          "minimum": 0.01,
+          "description": "Additional cost per guest/person in PKR"
+        }
+      },
+      "required": ["description", "base_price", "per_head_price"],
+      "example": {
+        "description": "Basic photography package with 4 hours coverage and 100 edited photos",
+        "base_price": 50000.0,
+        "per_head_price": 500.0
+      }
+    },
+    "premium_package": {
+      "type": "object",
+      "description": "Optional premium pricing package",
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "base_price": {
+          "type": "number",
+          "minimum": 0.01
+        },
+        "per_head_price": {
+          "type": "number",
+          "minimum": 0.01
+        }
+      },
+      "required": ["description", "base_price", "per_head_price"],
+      "example": {
+        "description": "Premium package with photography, videography, and drone shots",
+        "base_price": 100000.0,
+        "per_head_price": 800.0
+      }
+    },
+    "luxury_package": {
+      "type": "object",
+      "description": "Optional luxury pricing package",
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "base_price": {
+          "type": "number",
+          "minimum": 0.01
+        },
+        "per_head_price": {
+          "type": "number",
+          "minimum": 0.01
+        }
+      },
+      "required": ["description", "base_price", "per_head_price"],
+      "example": {
+        "description": "Luxury complete coverage with album, drone, and extended hours",
+        "base_price": 200000.0,
+        "per_head_price": 1200.0
+      }
+    },
+    "availability": {
+      "type": "string",
+      "enum": ["active", "inactive"],
+      "default": "active",
+      "description": "Vendor availability status"
+    }
+  },
+  "example": {
+    "business_name": "Royal Photography",
+    "category": ["photography", "videography"],
+    "services": "Professional photography and videography services for weddings, engagements, birthdays, and corporate events. We provide high-quality images and videos with professional editing.",
+    "city": "Karachi",
+    "area": "Gulshan-e-Iqbal",
+    "event_types": ["wedding", "engagement", "birthday", "corporate"],
+    "cnic_number": "42101-1234567-1",
+    "cnic_front_image": "/uploads/cnic_front_abc123def456.jpg",
+    "cnic_back_image": "/uploads/cnic_back_xyz789ghi012.jpg",
+    "whatsapp_number": "+923001234567",
+    "basic_package": {
+      "description": "Basic photography package with 4 hours coverage, 100 edited photos, and online gallery",
+      "base_price": 50000.0,
+      "per_head_price": 500.0
+    },
+    "premium_package": {
+      "description": "Premium package with 6 hours coverage, photography + videography, 200 edited photos, drone shots, and online gallery",
+      "base_price": 100000.0,
+      "per_head_price": 800.0
+    },
+    "luxury_package": {
+      "description": "Luxury complete coverage with 8 hours, photography + videography + drone, 300+ edited photos, printed album, and online gallery",
+      "base_price": 200000.0,
+      "per_head_price": 1200.0
+    },
+    "availability": "active"
+  }
+}

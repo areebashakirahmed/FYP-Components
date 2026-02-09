@@ -7,6 +7,7 @@ import 'package:mehfilista/features/profile/views/user_profile_screen.dart';
 import 'package:mehfilista/features/vendor/models/vendor_model.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/features/vendor/views/vendor_dashboard_screen.dart';
+import 'package:mehfilista/features/vendor/views/vendor_registration_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_search_screen.dart';
 import 'package:mehfilista/utils/constants/app_config.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
@@ -48,6 +49,11 @@ class _MainShellState extends State<MainShell> {
         : null;
     final bool isVendorVerified =
         approvalStatus == ApprovalStatus.approved;
+    
+    // Check if vendor has a profile
+    final hasVendorProfile = isVendor &&
+        (authProvider.user?.vendorProfile != null ||
+            vendorProvider.myVendorProfile != null);
 
     // Different screens for vendor vs user
     final List<Widget> userScreens = [
@@ -89,8 +95,11 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
             ),
+          // Banner for vendors without profile: prompt to complete profile
+          if (isVendor && !hasVendorProfile)
+            _buildCompleteProfileBanner(),
           // Vendor verification banner: show when vendor is not approved (pending, rejected, or status not loaded yet)
-          if (isVendor && !isVendorVerified)
+          if (isVendor && hasVendorProfile && !isVendorVerified)
             _buildVerificationBanner(approvalStatus?.name ?? 'pending'),
           Expanded(
             child: IndexedStack(index: _currentIndex, children: screens),
@@ -113,6 +122,75 @@ class _MainShellState extends State<MainShell> {
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
             child: isVendor ? _buildVendorNavBar() : _buildUserNavBar(),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompleteProfileBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.blue.shade100,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: Colors.blue.shade900,
+              size: 20.sp,
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Complete Your Profile',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade900,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'You have to complete your profile in order for admin to verify you. You can\'t sign up and do all the things.',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8.w),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const VendorRegistrationScreen(),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Complete Now',
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue.shade900,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

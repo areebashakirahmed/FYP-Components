@@ -48,6 +48,7 @@ class _VendorPortfolioScreenState extends State<VendorPortfolioScreen> {
         builder: (context, provider, _) {
           final vendor = provider.myVendorProfile;
           final images = vendor?.portfolioImages ?? [];
+          final imageUrls = vendor?.portfolioImageUrls ?? [];
 
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -105,9 +106,9 @@ class _VendorPortfolioScreenState extends State<VendorPortfolioScreen> {
                   mainAxisSpacing: 12.h,
                   childAspectRatio: 1,
                 ),
-                itemCount: images.length,
+                itemCount: imageUrls.length,
                 itemBuilder: (context, index) {
-                  return _buildPortfolioImage(images[index], index);
+                  return _buildPortfolioImage(imageUrls[index], index);
                 },
               ),
               if (_isUploading)

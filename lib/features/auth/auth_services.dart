@@ -78,7 +78,13 @@ class AuthServices {
       );
 
       if (response.statusCode == 200) {
-        return UserModel.fromJson(jsonDecode(response.body));
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final userJson = body['user'] ?? body;
+        return UserModel.fromJson(
+          userJson is Map<String, dynamic>
+              ? userJson
+              : Map<String, dynamic>.from(userJson as Map),
+        );
       } else {
         throw Exception(ApiErrorHandler.getErrorMessage(response));
       }

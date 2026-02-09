@@ -781,9 +781,9 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
-                  background: vendor.portfolioImages.isNotEmpty
+                  background: vendor.portfolioImageUrls.isNotEmpty
                       ? Image.network(
-                          vendor.portfolioImages.first,
+                          vendor.portfolioImageUrls.first,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: AppColors.primary.withOpacity(0.3),
@@ -1160,7 +1160,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       ],
 
                       // Portfolio Images
-                      if (vendor.portfolioImages.length > 1) ...[
+                      if (vendor.portfolioImageUrls.length > 1) ...[
                         Text(
                           'Portfolio',
                           style: TextStyle(
@@ -1173,7 +1173,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           height: 120.h,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            itemCount: vendor.portfolioImages.length,
+                            itemCount: vendor.portfolioImageUrls.length,
                             itemBuilder: (context, index) {
                               return Container(
                                 width: 120.w,
@@ -1184,7 +1184,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8.r),
                                   child: Image.network(
-                                    vendor.portfolioImages[index],
+                                    vendor.portfolioImageUrls[index],
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: Colors.grey[300],

@@ -4,12 +4,14 @@ import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/main_shell.dart';
 import 'package:mehfilista/features/vendor/models/vendor_model.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
+import 'package:mehfilista/features/vendor/views/vendor_registration_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_verification_pending_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
 
 /// Decides whether to show MainShell or VendorVerificationPendingScreen.
 /// Unverified vendors (pending/rejected) are blocked from app access.
+/// Vendors without a profile are shown MainShell with a banner prompting them to complete profile.
 class AuthGateScreen extends StatefulWidget {
   const AuthGateScreen({super.key});
 
@@ -32,9 +34,12 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
       if (mounted) setState(() => _resolved = true);
       return;
     }
-    // Load vendor profile if not already in user (e.g. /auth/me didn't return vendor_profile)
+    // Load vendor profile if not already in user, with timeout so we never get stuck
     if (auth.user?.vendorProfile == null && auth.token != null) {
-      await context.read<VendorProvider>().loadMyVendorProfile(auth.token!);
+      await context.read<VendorProvider>().loadMyVendorProfile(auth.token!).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
     }
     if (mounted) setState(() => _resolved = true);
   }
@@ -83,6 +88,7 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
       );
     }
 
+    // Vendor without profile: show MainShell with banner prompting to complete profile
     return const MainShell();
   }
 }

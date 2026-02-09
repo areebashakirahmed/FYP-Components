@@ -421,13 +421,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         top: Radius.circular(12.r),
                       ),
                     ),
-                    child: vendor.portfolioImages.isNotEmpty
+                    child: vendor.portfolioImageUrls.isNotEmpty
                         ? ClipRRect(
                             borderRadius: BorderRadius.vertical(
                               top: Radius.circular(12.r),
                             ),
                             child: Image.network(
-                              vendor.portfolioImages.first,
+                              vendor.portfolioImageUrls.first,
                               fit: BoxFit.cover,
                               width: double.infinity,
                               errorBuilder: (_, __, ___) => Center(

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/vendor/models/pricing_package_model.dart';
+import 'package:mehfilista/features/vendor/models/vendor_model.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,29 @@ class _VendorPackagesScreenState extends State<VendorPackagesScreen> {
   @override
   void initState() {
     super.initState();
+    _checkVerificationAndLoad();
+  }
+
+  void _checkVerificationAndLoad() {
+    final authProvider = context.read<AuthProvider>();
+    final vendorProvider = context.read<VendorProvider>();
+    
+    final vendor = vendorProvider.myVendorProfile;
+    final approvalStatus = vendor?.approvalStatus ??
+        authProvider.user?.vendorProfile?.approvalStatus;
+    
+    if (approvalStatus != ApprovalStatus.approved) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Fluttertoast.showToast(
+            msg: 'You can only access packages after your profile is verified by admin.',
+          );
+          Navigator.pop(context);
+        }
+      });
+      return;
+    }
+    
     _loadPackages();
   }
 

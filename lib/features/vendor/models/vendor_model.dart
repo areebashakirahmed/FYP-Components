@@ -1,5 +1,6 @@
 import 'package:mehfilista/features/vendor/models/pricing_package_model.dart';
 import 'package:mehfilista/features/vendor/models/pricing_tier_model.dart';
+import 'package:mehfilista/utils/constants/api_constants.dart';
 
 /// Vendor approval status enum
 enum ApprovalStatus {
@@ -47,6 +48,9 @@ class VendorModel {
   final double averageRating;
   final int totalReviews;
 
+  /// Profile picture path from API (use [profilePictureUrl] for full URL)
+  final String? profilePicture;
+
   // Approval workflow
   final ApprovalStatus approvalStatus;
   final String? rejectionReason;
@@ -89,6 +93,7 @@ class VendorModel {
     this.portfolioImages = const [],
     this.averageRating = 0.0,
     this.totalReviews = 0,
+    this.profilePicture,
     this.approvalStatus = ApprovalStatus.pending,
     this.rejectionReason,
     this.isApproved = false,
@@ -132,6 +137,7 @@ class VendorModel {
       averageRating: (json['average_rating'] ?? json['averageRating'] ?? 0)
           .toDouble(),
       totalReviews: json['total_reviews'] ?? json['totalReviews'] ?? 0,
+      profilePicture: json['profile_picture'] ?? json['profilePicture'],
       approvalStatus: approvalStatus,
       rejectionReason: json['rejection_reason'],
       isApproved:
@@ -183,6 +189,7 @@ class VendorModel {
       'portfolio_images': portfolioImages,
       'average_rating': averageRating,
       'total_reviews': totalReviews,
+      if (profilePicture != null) 'profile_picture': profilePicture,
       'approval_status': approvalStatus.name,
       if (rejectionReason != null) 'rejection_reason': rejectionReason,
       'is_approved': isApproved,
@@ -200,6 +207,21 @@ class VendorModel {
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
+  }
+
+  /// Full URL for profile picture (BASE_URL + path). Use for display.
+  String? get profilePictureUrl => VendorModel.imageUrl(profilePicture);
+
+  /// Full URLs for portfolio images (BASE_URL + each path).
+  List<String> get portfolioImageUrls =>
+      portfolioImages.map((p) => VendorModel.imageUrl(p) ?? p).where((u) => u.isNotEmpty).toList();
+
+  /// Build full image URL from API path. Path may be relative (e.g. /uploads/xxx.jpg).
+  static String? imageUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    final base = ApiConstants.baseUrl;
+    return base.endsWith('/') ? '$base${path.replaceFirst(RegExp(r'^/'), '')}' : '$base$path';
   }
 
   /// Check if vendor has any pricing tiers set
@@ -251,6 +273,7 @@ class VendorModel {
     List<String>? portfolioImages,
     double? averageRating,
     int? totalReviews,
+    String? profilePicture,
     ApprovalStatus? approvalStatus,
     String? rejectionReason,
     bool? isApproved,
@@ -283,6 +306,7 @@ class VendorModel {
       portfolioImages: portfolioImages ?? this.portfolioImages,
       averageRating: averageRating ?? this.averageRating,
       totalReviews: totalReviews ?? this.totalReviews,
+      profilePicture: profilePicture ?? this.profilePicture,
       approvalStatus: approvalStatus ?? this.approvalStatus,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       isApproved: isApproved ?? this.isApproved,

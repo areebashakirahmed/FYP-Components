@@ -516,13 +516,13 @@ class _VendorSearchScreenState extends State<VendorSearchScreen> {
                   left: Radius.circular(12.r),
                 ),
               ),
-              child: vendor.portfolioImages.isNotEmpty
+              child: vendor.portfolioImageUrls.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.horizontal(
                         left: Radius.circular(12.r),
                       ),
                       child: Image.network(
-                        vendor.portfolioImages.first,
+                        vendor.portfolioImageUrls.first,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Center(
                           child: Icon(

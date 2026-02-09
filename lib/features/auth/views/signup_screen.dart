@@ -28,6 +28,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
+  final TextEditingController areaController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -46,6 +47,7 @@ class _SignupScreenState extends State<SignupScreen> {
     phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
+    areaController.dispose();
     super.dispose();
   }
 
@@ -60,6 +62,13 @@ class _SignupScreenState extends State<SignupScreen> {
     final authProvider = context.read<AuthProvider>();
     final locationProvider = context.read<LocationProvider>();
 
+    // Get area from dropdown selection or text field
+    final area = locationProvider.selectedArea ?? areaController.text.trim();
+    if (area.isEmpty) {
+      Fluttertoast.showToast(msg: 'Please select or enter an area');
+      return;
+    }
+
     final success = await authProvider.register(
       emailController.text.trim(),
       passwordController.text,
@@ -67,7 +76,7 @@ class _SignupScreenState extends State<SignupScreen> {
       phoneController.text.trim(),
       widget.role,
       city: locationProvider.selectedCity,
-      area: locationProvider.selectedArea,
+      area: area,
     );
 
     if (success && mounted) {
@@ -187,6 +196,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                     onChanged: (value) {
                                       if (value != null) {
                                         locationProvider.selectCity(value);
+                                        // Clear area when city changes
+                                        areaController.clear();
                                       }
                                     },
                                     validator: (value) {
@@ -198,52 +209,71 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                           ),
 
-                          // Area Dropdown (shows when city is selected)
-                          if (locationProvider.selectedCity != null &&
-                              locationProvider
-                                  .areasForSelectedCity
-                                  .isNotEmpty) ...[
+                          // Area Field (shows when city is selected)
+                          if (locationProvider.selectedCity != null) ...[
                             SizedBox(height: 16.h),
-                            Text(
-                              'Area',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.black,
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8.r),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                value: locationProvider.selectedArea,
-                                decoration: InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16.w,
-                                    vertical: 12.h,
+                            // Show dropdown if areas are available, otherwise show text field
+                            locationProvider.areasForSelectedCity.isNotEmpty
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Area',
+                                        style: TextStyle(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.black,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8.h),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8.r),
+                                          border: Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: DropdownButtonFormField<String>(
+                                          value: locationProvider.selectedArea,
+                                          decoration: InputDecoration(
+                                            contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 16.w,
+                                              vertical: 12.h,
+                                            ),
+                                            border: InputBorder.none,
+                                            hintText: 'Select your area',
+                                          ),
+                                          items: locationProvider.areaNames.map((
+                                            areaName,
+                                          ) {
+                                            return DropdownMenuItem(
+                                              value: areaName,
+                                              child: Text(areaName),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              locationProvider.selectArea(value);
+                                              areaController.text = value;
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : CustomTextfield(
+                                    heading: 'Area',
+                                    hintText: 'Enter your area',
+                                    controller: areaController,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter an area';
+                                      }
+                                      return null;
+                                    },
+                                    onChanged: (value) {
+                                      locationProvider.selectArea(value);
+                                    },
                                   ),
-                                  border: InputBorder.none,
-                                  hintText: 'Select your area',
-                                ),
-                                items: locationProvider.areaNames.map((
-                                  areaName,
-                                ) {
-                                  return DropdownMenuItem(
-                                    value: areaName,
-                                    child: Text(areaName),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    locationProvider.selectArea(value);
-                                  }
-                                },
-                              ),
-                            ),
                           ],
                         ],
                       );

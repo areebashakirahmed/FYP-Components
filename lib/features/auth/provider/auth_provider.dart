@@ -10,12 +10,14 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _user;
   String? _token;
   bool _isLoading = false;
+  bool _isCheckingAuth = false; // initial loadUser only; does not affect login/signup buttons
   String? _error;
   bool _sessionExpired = false;
 
   UserModel? get user => _user;
   String? get token => _token;
   bool get isLoading => _isLoading;
+  bool get isCheckingAuth => _isCheckingAuth;
   String? get error => _error;
   bool get isAuthenticated => _user != null && _token != null;
   bool get isVendor => _user?.role == 'vendor';
@@ -48,40 +50,38 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> loadUser() async {
-    _isLoading = true;
+    _isCheckingAuth = true;
     notifyListeners();
+    try {
+      _token = await _userStorage.getToken();
 
-    _token = await _userStorage.getToken();
-
-    // Clear any old demo tokens from previous sessions
-    if (_token != null && _token!.startsWith('demo_token_')) {
-      await logout();
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
-
-    if (_token != null) {
-      try {
-        // Always validate token with API
-        _user = await _authServices.getMe(_token!);
-        if (_user != null) {
-          await _userStorage.saveUser(_user!);
-        }
-      } catch (e) {
-        final msg = e.toString().replaceAll('Exception: ', '');
-        if (_isSessionExpiredError(msg)) {
-          await _handleSessionExpiry();
-          _isLoading = false;
-          return;
-        }
-        // Token invalid, logout
+      if (_token != null && _token!.startsWith('demo_token_')) {
         await logout();
+        return;
       }
-    }
 
-    _isLoading = false;
-    notifyListeners();
+      if (_token != null) {
+        try {
+          _user = await _authServices.getMe(_token!).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Connection timed out'),
+          );
+          if (_user != null) {
+            await _userStorage.saveUser(_user!);
+          }
+        } catch (e) {
+          final msg = e.toString().replaceAll('Exception: ', '');
+          if (_isSessionExpiredError(msg)) {
+            await _handleSessionExpiry();
+            return;
+          }
+          await logout();
+        }
+      }
+    } finally {
+      _isCheckingAuth = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> register(

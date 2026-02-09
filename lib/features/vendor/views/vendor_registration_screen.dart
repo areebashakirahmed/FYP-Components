@@ -187,7 +187,7 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
     }
 
     if (area == null || area.isEmpty) {
-      Fluttertoast.showToast(msg: 'Please select an area');
+      Fluttertoast.showToast(msg: 'Please select or enter an area');
       return;
     }
 
@@ -540,45 +540,74 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
                       },
                     ),
                   ),
-                  if (locationProvider.selectedCity != null &&
-                      locationProvider.areaNames.isNotEmpty) ...[
+                  // Area Field (always show when city is selected)
+                  if (locationProvider.selectedCity != null) ...[
                     SizedBox(height: 16.h),
-                    Text(
-                      'Area',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: DropdownButtonFormField<String>(
-                        value: locationProvider.selectedArea,
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16.w,
+                    locationProvider.areaNames.isNotEmpty
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Area *',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8.h),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  value: locationProvider.selectedArea,
+                                  decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16.w,
+                                    ),
+                                    border: InputBorder.none,
+                                    hintText: 'Select area',
+                                  ),
+                                  items: locationProvider.areaNames.map((area) {
+                                    return DropdownMenuItem(
+                                      value: area,
+                                      child: Text(area),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      locationProvider.selectArea(value);
+                                    }
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please select an area';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
+                        : CustomTextfield(
+                            heading: 'Area *',
+                            hintText: 'Enter your area',
+                            controller: TextEditingController(
+                              text: locationProvider.selectedArea ?? '',
+                            )..addListener(() {
+                                final value = locationProvider.selectedArea;
+                                if (value != null && value.isNotEmpty) {
+                                  // Keep synced
+                                }
+                              }),
+                            validator: (value) =>
+                                Validators.validateRequired(value, fieldName: 'Area'),
+                            onChanged: (value) {
+                              locationProvider.selectArea(value);
+                            },
                           ),
-                          border: InputBorder.none,
-                          hintText: 'Select area',
-                        ),
-                        items: locationProvider.areaNames.map((area) {
-                          return DropdownMenuItem(
-                            value: area,
-                            child: Text(area),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            locationProvider.selectArea(value);
-                          }
-                        },
-                      ),
-                    ),
                   ],
                 ],
               );

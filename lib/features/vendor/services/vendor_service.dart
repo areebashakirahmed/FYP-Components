@@ -158,7 +158,7 @@ class VendorService {
   }
 
   /// Update vendor profile (Vendor only)
-  /// Matches backend VendorUpdate schema (all optional)
+  /// Matches backend VendorUpdate schema (all optional). Supports profile_picture and portfolio_images.
   Future<ApiResult<VendorModel>> updateVendor({
     required String token,
     required String vendorId,
@@ -173,6 +173,8 @@ class VendorService {
     Map<String, dynamic>? premiumPackage,
     Map<String, dynamic>? luxuryPackage,
     String? availability,
+    String? profilePicture,
+    List<String>? portfolioImages,
   }) async {
     try {
       final body = <String, dynamic>{};
@@ -187,6 +189,8 @@ class VendorService {
       if (premiumPackage != null) body['premium_package'] = premiumPackage;
       if (luxuryPackage != null) body['luxury_package'] = luxuryPackage;
       if (availability != null) body['availability'] = availability;
+      if (profilePicture != null) body['profile_picture'] = profilePicture;
+      if (portfolioImages != null) body['portfolio_images'] = portfolioImages;
 
       final response = await http.put(
         Uri.parse(ApiConstants.updateVendor(vendorId)),

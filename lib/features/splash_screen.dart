@@ -24,26 +24,11 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // Wait for the splash to show
     await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
-
-    // Wait for auth to load if needed
-    if (authProvider.isLoading) {
-      await Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 100));
-        return authProvider.isLoading && mounted;
-      });
-    }
-
-    if (!mounted) return;
-
-    // Navigate based on auth status
     if (authProvider.isAuthenticated) {
-      // AuthGateScreen shows MainShell or blocks unverified vendors with Verification Pending
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AuthGateScreen()),
@@ -60,7 +45,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldColor,
-
       body: Container(
         width: double.infinity,
         height: double.infinity,

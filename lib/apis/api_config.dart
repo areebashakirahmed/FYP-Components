@@ -1,3 +1,3 @@
 class ApiConfig {
-  static const String BaseUrl = "http://20.83.180.133:9000";
+  static const String BaseUrl = 'https://fyp-n9at.onrender.com';
 }

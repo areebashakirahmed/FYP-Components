@@ -121,6 +121,15 @@ class ApiErrorHandler {
   static String _handleForbidden(http.Response response) {
     final detail = _parseDetail(response);
 
+    // Approval status (new API) – show backend message
+    if (detail.contains('pending approval') ||
+        detail.contains('Please wait for admin')) {
+      return detail.isNotEmpty ? detail : 'Your account is pending approval. Please wait for admin to approve.';
+    }
+    if (detail.contains('has been rejected') || detail.contains('contact support')) {
+      return detail.isNotEmpty ? detail : 'Your account has been rejected. Please contact support.';
+    }
+
     // Vendor creation
     if (detail.contains('Only vendors')) {
       return 'This feature is only available for vendor accounts';

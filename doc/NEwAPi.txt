@@ -1,0 +1,242 @@
+# Flutter App – Backend API Update (for Flutter Dev)
+
+This document describes **all recent backend/API changes** so the Flutter app can stay in sync. Use it to update models, API calls, and UI (approval states, uploads, vendor profile).
+
+---
+
+## 1\. Base URL & Auth
+
+- **Production API:** `https://fyp-n9at.onrender.com` (or your configured base URL).
+- **Auth header:** `Authorization: Bearer <access_token>` on all protected endpoints.
+- **Login:** `POST /auth/login` — body `{ "email", "password" }`.
+- **Register:** `POST /auth/register` — body includes `email`, `password`, `name`, `phone`, `role` (`"user"` | `"vendor"`), optional `city`, `area`.
+
+---
+
+## 2\. Auth Responses – Approval Status & Vendor Profile
+
+**Login and Register** both return:
+
+```json
+{
+  "access_token": "...",
+  "token_type": "bearer",
+  "user": {
+    "id": "...",
+    "email": "...",
+    "name": "...",
+    "phone": "...",
+    "role": "user | vendor | admin",
+    "city": null,
+    "area": null,
+    "approval_status": "pending | approved | rejected",
+    "vendor_profile": null
+  }
+}
+```
+
+`GET /auth/me` returns the same `user` shape. For **vendor** users, `vendor_profile` is populated:
+
+```json
+{
+  "user": {
+    "id": "...",
+    "approval_status": "approved",
+    "vendor_profile": {
+      "id": "<vendor_id>",
+      "business_name": "...",
+      "category": ["photography"],
+      "city": "...",
+      "area": "...",
+      "approval_status": "pending | approved | rejected",
+      "rejection_reason": null,
+      "whatsapp_number": "...",
+      "cnic_number": "...",
+      "cnic_front_image": "/uploads/...",
+      "cnic_back_image": "/uploads/...",
+      "basic_package": { ... },
+      "premium_package": { ... },
+      "luxury_package": { ... },
+      "portfolio_images": ["/uploads/..."]
+    }
+  }
+}
+```
+
+**What to do in Flutter:**
+
+- Always read `user.approval_status` and, for vendors, `user.vendor_profile.approval_status`.
+- **Block unapproved users:** e.g. show “Pending approval” / “Rejected” screen and disable sending inquiries.
+- **Block unapproved vendors:** e.g. show “Pending approval” and disable responding to inquiries / editing profile in public context until approved.
+- New users/vendors get `approval_status: "pending"` until admin approves.
+
+---
+
+## 3\. 403 – Unapproved Users/Vendors
+
+Protected endpoints (inquiries, vendor reply, etc.) return **403** when the user/vendor is not approved:
+
+- **Pending:**\
+  `403` — `"Your account is pending approval. Please wait for admin to approve your account."`
+- **Rejected:**\
+  `403` — `"Your account has been rejected. Please contact support."`
+
+**What to do in Flutter:**
+
+- On 403, parse `detail` and show the message; do not allow the action (e.g. send inquiry, reply to inquiry).
+- Optionally store `rejection_reason` when you have it (e.g. from `vendor_profile.rejection_reason`) and show it in “Rejected” state.
+
+---
+
+## 4\. File Upload – CNIC & Profile/Portfolio Images
+
+**Endpoint:** `POST /upload/image`\
+**Auth:** Required (Bearer token).\
+**Content-Type:** `multipart/form-data`\
+**Body:** one file field (e.g. `file`).
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "file_path": "/uploads/<uuid>.<ext>",
+  "filename": "<uuid>.<ext>",
+  "original_filename": "photo.jpg",
+  "size": 12345
+}
+```
+
+**Serving:** Files are served by the backend at `BASE_URL + file_path` (e.g. `https://fyp-n9at.onrender.com/uploads/xxx.jpg`).
+
+**What to do in Flutter:**
+
+- Use `POST /upload/image` with multipart for:
+  - CNIC front/back (vendor registration).
+  - Profile picture (then send `file_path` in `PUT /vendors/{id}` as `profile_picture`).
+  - Portfolio images (upload each, then send list of `file_path` in `PUT /vendors/{id}` as `portfolio_images`).
+- **Vendor registration:** Send `cnic_front_image` and `cnic_back_image` as the **string** `file_path` from the upload response (e.g. `"/uploads/xxx.jpg"`).
+- Max size 10MB; allowed types: JPG, JPEG, PNG, GIF, WEBP (and PDF if backend allows).
+
+---
+
+## 5\. Vendor – Create Profile (Registration)
+
+**Endpoint:** `POST /vendors`\
+**Auth:** Required (vendor role).\
+**Body (JSON):**
+
+- `business_name`, `category` (list of strings), `services`, `city`, `area`, `event_types` (list), `whatsapp_number`
+- **CNIC:** `cnic_number` (format `42101-1234567-1`), `cnic_front_image`, `cnic_back_image` — **strings** (paths from `POST /upload/image`).
+- Optional: `basic_package`, `premium_package`, `luxury_package` (each: `description`, `base_price`, `per_head_price`), `availability` (default `"active"`).
+
+CNIC images must be uploaded first; then pass the returned `file_path` values.
+
+---
+
+## 6\. Vendor – Update Profile (Including Profile Picture & Portfolio)
+
+**Endpoint:** `PUT /vendors/{vendor_id}`\
+**Auth:** Required (vendor, own profile only).
+
+**New/updated fields you can send (all optional):**
+
+- Existing: `business_name`, `category`, `services`, `city`, `area`, `event_types`, `whatsapp_number`, `basic_package`, `premium_package`, `luxury_package`, `availability`.
+- **New:**
+  - `profile_picture`: string — path from upload (e.g. `"/uploads/xxx.jpg"`).
+  - `portfolio_images`: list of strings — **full list** of image paths (replaces previous list). Upload images via `POST /upload/image`, then send the list of `file_path` values.
+
+**What to do in Flutter:**
+
+- Add UI for profile picture: upload with `POST /upload/image`, then `PUT /vendors/{id}` with `profile_picture: file_path`.
+- For portfolio: upload each image, collect `file_path`s, then `PUT /vendors/{id}` with `portfolio_images: [path1, path2, ...]`.
+
+---
+
+## 7\. Vendor – Get Profile (Me & Public)
+
+`GET /vendors/me` and `GET /vendors/{id}` return the same vendor shape. It now includes:
+
+- **Existing:** `id`, `user_id`, `business_name`, `category`, `services`, `city`, `area`, `event_types`, `portfolio_images`, `approval_status`, `rejection_reason`, `whatsapp_number`, pricing packages, `availability`, `approved` (legacy bool), `created_at`, `average_rating`, `total_reviews`, etc.
+- **New:**
+  - `profile_picture`: string or null — use with base URL for avatar.
+  - For **own** vendor or admin: `cnic_front_image`, `cnic_back_image` (strings or null).
+  - `portfolio_images`: array of strings (paths). Build full URL as `BASE_URL + path`.
+
+Public search/list may omit CNIC fields; always use `approval_status` and `approved` for “approved” state.
+
+---
+
+## 8\. Vendor – Portfolio Upload (Alternative)
+
+**Endpoint:** `POST /vendors/{vendor_id}/portfolio`\
+**Auth:** Required (vendor, own profile).\
+**Body:** multipart, one image file.
+
+**Response:** e.g. `{ "message": "Image uploaded successfully", "file_path": "/uploads/xxx.jpg" }`.
+
+This **appends** one image to the vendor’s `portfolio_images`. To replace the whole list, use `PUT /vendors/{id}` with `portfolio_images` instead.
+
+---
+
+## 9\. Inquiries – Create & Response Shape
+
+**Create:** `POST /inquiries`\
+Body uses `event_date` (string, e.g. `"2024-06-15"`), not `preferred_date`. Same as before; no change if you already use `event_date`.
+
+**Inquiry object (e.g. GET inquiry, list inquiries):**
+
+- Includes `event_date` (and may still expose `preferred_date` in some admin responses; prefer `event_date`).
+- Other fields unchanged: `id`, `user_id`, `vendor_id`, `event_type`, `selected_package`, `number_of_guests`, `message`, `status`, `vendor_response`, `created_at`, `updated_at`, etc.
+
+Use `event_date` in Flutter for display and when creating inquiries.
+
+---
+
+## 10\. Verification Rules (Summary)
+
+- **Guests (users):** Can send inquiries only when `user.approval_status === "approved"`. Otherwise 403.
+- **Vendors:** Can create/update profile and respond to inquiries only when approved (user approved and, if applicable, `vendor_profile.approval_status === "approved"`). Otherwise 403.
+- **Search:** `GET /vendors/search` returns only approved vendors by default (`approved_only=true`). Unapproved vendors are hidden from search.
+
+---
+
+## 11\. Admin-Only Endpoints (If Flutter Has Admin UI)
+
+These were added or changed for the web admin; use only if you have an admin flow in Flutter:
+
+- `GET /admin/stats`\
+  Response now includes `users.pending` (count of users pending approval).
+- `GET /admin/users/pending`\
+  Returns list of users with `approval_status` pending (or missing). Same item shape as all-users list (includes `rejection_reason` if set).
+- `PUT /admin/users/{user_id}/reject`\
+  Optional body: `{ "rejection_reason": "..." }`. Stores reason on user; can be shown in app if you expose it.
+
+---
+
+## 12\. Quick Checklist for Flutter
+
+- [ ] **Auth:** Parse and store `approval_status` (and for vendors `vendor_profile.approval_status`) from login, register, and `GET /auth/me`.
+
+- [ ] **UI:** Show “Pending approval” / “Rejected” (and optional `rejection_reason`) and block actions that require approval.
+
+- [ ] **403:** Handle 403 from protected endpoints and show backend `detail` message.
+
+- [ ] **Upload:** Use `POST /upload/image` (multipart) for CNIC, profile picture, and portfolio; use returned `file_path` in vendor create/update.
+
+- [ ] **Vendor create:** Send `cnic_front_image` and `cnic_back_image` as upload `file_path` strings.
+
+- [ ] **Vendor update:** Support `profile_picture` and `portfolio_images` (list of paths); build image URLs as `BASE_URL + path`.
+
+- [ ] **Vendor response:** Display `profile_picture`, `portfolio_images`; use `event_date` for inquiries.
+
+- [ ] **Inquiries:** Use `event_date` when creating and when displaying.
+
+---
+
+## 13\. No Breaking Changes
+
+- Auth and vendor response shapes are **additive** (new fields). Existing fields and endpoints remain.
+- Inquiry create already uses `event_date`; admin/list may still return both `event_date` and `preferred_date` — prefer `event_date` in the app.
+
+If you need a specific request/response example or a Postman collection snippet for any endpoint, say which one and we can add it here.R

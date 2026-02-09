@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/inquiry/models/inquiry_model.dart';
 import 'package:mehfilista/features/inquiry/providers/inquiry_provider.dart';
@@ -8,6 +9,7 @@ import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/features/vendor/views/vendor_packages_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_portfolio_screen.dart';
 import 'package:mehfilista/features/vendor/views/vendor_profile_edit_screen.dart';
+import 'package:mehfilista/features/vendor/views/vendor_registration_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
 
@@ -73,6 +75,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             children: [
               // Welcome Section
               _buildWelcomeSection(),
+              SizedBox(height: 16.h),
+
+              // Complete Profile Banner (if no profile)
+              _buildCompleteProfileBanner(),
               SizedBox(height: 16.h),
 
               // Approval Status Banner
@@ -165,6 +171,84 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompleteProfileBanner() {
+    return Consumer2<AuthProvider, VendorProvider>(
+      builder: (context, authProvider, vendorProvider, _) {
+        final hasVendorProfile =
+            authProvider.user?.vendorProfile != null ||
+            vendorProvider.myVendorProfile != null;
+        
+        if (hasVendorProfile) return const SizedBox.shrink();
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.blue.shade900,
+                size: 28.sp,
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Complete Your Profile',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'You have to complete your profile in order for admin to verify you. You can\'t sign up and do all the things.',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VendorRegistrationScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade900,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                child: Text(
+                  'Complete Now',
+                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -332,10 +416,13 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 
   Widget _buildPricingTiersSection() {
-    return Consumer<VendorProvider>(
-      builder: (context, vendorProvider, _) {
+    return Consumer2<AuthProvider, VendorProvider>(
+      builder: (context, authProvider, vendorProvider, _) {
         final vendor = vendorProvider.myVendorProfile;
         if (vendor == null) return const SizedBox.shrink();
+
+        final approvalStatus = vendor.approvalStatus;
+        final isVerified = approvalStatus == ApprovalStatus.approved;
 
         final hasPackages =
             vendor.basicPackage != null ||
@@ -358,21 +445,30 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   ),
                   SizedBox(height: 12.h),
                   Text(
-                    'No pricing packages set',
+                    isVerified
+                        ? 'No pricing packages set'
+                        : 'Packages available after verification',
                     style: TextStyle(fontSize: 14.sp, color: Colors.grey),
                   ),
                   SizedBox(height: 8.h),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const VendorPackagesScreen(),
-                        ),
-                      );
-                    },
-                    child: Text('Add Packages'),
-                  ),
+                  if (isVerified)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const VendorPackagesScreen(),
+                          ),
+                        );
+                      },
+                      child: Text('Add Packages'),
+                    )
+                  else
+                    Text(
+                      'Complete your profile and wait for admin verification',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
                 ],
               ),
             ),
@@ -593,6 +689,18 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 icon: Icons.price_change,
                 label: 'Packages',
                 onTap: () {
+                  final vendor = context.read<VendorProvider>().myVendorProfile;
+                  final authProvider = context.read<AuthProvider>();
+                  final approvalStatus = vendor?.approvalStatus ??
+                      authProvider.user?.vendorProfile?.approvalStatus;
+                  
+                  if (approvalStatus != ApprovalStatus.approved) {
+                    Fluttertoast.showToast(
+                      msg: 'You can only access packages after your profile is verified by admin.',
+                    );
+                    return;
+                  }
+                  
                   Navigator.push(
                     context,
                     MaterialPageRoute(

@@ -6,6 +6,7 @@ import 'package:mehfilista/components/custom_textfield.dart';
 import 'package:mehfilista/features/auth/provider/auth_provider.dart';
 import 'package:mehfilista/features/vendor/providers/vendor_provider.dart';
 import 'package:mehfilista/features/vendor/views/vendor_portfolio_screen.dart';
+import 'package:mehfilista/features/vendor/views/vendor_registration_screen.dart';
 import 'package:mehfilista/utils/constants/colors.dart';
 import 'package:provider/provider.dart';
 
@@ -118,6 +119,10 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Complete Profile Banner (if new profile)
+              if (_isNewProfile) _buildCompleteProfileBanner(),
+              if (_isNewProfile) SizedBox(height: 16.h),
+              
               // Business Name
               CustomTextfield(
                 heading: 'Business Name',
@@ -382,5 +387,73 @@ class _VendorProfileEditScreenState extends State<VendorProfileEditScreen> {
     } else {
       Fluttertoast.showToast(msg: vendorProvider.error ?? 'Failed to save');
     }
+  }
+
+  Widget _buildCompleteProfileBanner() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Colors.blue.shade900,
+            size: 24.sp,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Complete Your Profile',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  'You have to complete your profile in order for admin to verify you. You can\'t sign up and do all the things.',
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const VendorRegistrationScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade900,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              'Complete Now',
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

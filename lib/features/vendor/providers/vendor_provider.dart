@@ -188,7 +188,7 @@ class VendorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update vendor profile matching backend VendorUpdate schema
+  /// Update vendor profile matching backend VendorUpdate schema (incl. profile_picture, portfolio_images)
   Future<bool> updateVendorProfile({
     required String token,
     required String vendorId,
@@ -203,6 +203,8 @@ class VendorProvider extends ChangeNotifier {
     Map<String, dynamic>? premiumPackage,
     Map<String, dynamic>? luxuryPackage,
     String? availability,
+    String? profilePicture,
+    List<String>? portfolioImages,
   }) async {
     _isLoading = true;
     _error = null;
@@ -222,6 +224,8 @@ class VendorProvider extends ChangeNotifier {
       premiumPackage: premiumPackage,
       luxuryPackage: luxuryPackage,
       availability: availability,
+      profilePicture: profilePicture,
+      portfolioImages: portfolioImages,
     );
 
     bool success = false;

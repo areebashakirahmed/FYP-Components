@@ -1,0 +1,447 @@
+# Flutter Vendor Profile Form - Complete Guide
+
+## Overview
+
+After a vendor signs up (`POST /auth/register` with `role: "vendor"`), they **MUST** create their vendor profile (`POST /vendors`) to submit their business details and CNIC for admin approval. This is the **verification flow**.
+
+**The banner showing permanently is because the vendor profile hasn't been created yet.** Once `POST /vendors` is called successfully, the vendor will be in "pending" status and can see their profile.
+
+---
+
+## Complete Flow
+
+```
+Step 1: Vendor Registration
+  POST /auth/register { role: "vendor", email, password, name, phone, city, area }
+  → Returns token + user with approval_status: "pending"
+
+Step 2: Upload CNIC Images (REQUIRED)
+  POST /upload/image (upload CNIC front) → returns file_path: "/uploads/xxx.jpg"
+  POST /upload/image (upload CNIC back) → returns file_path: "/uploads/yyy.jpg"
+
+Step 3: Create Vendor Profile (REQUIRED - This submits for approval)
+  POST /vendors { business_name, category, services, city, area, event_types, 
+                  cnic_number, cnic_front_image, cnic_back_image, whatsapp_number, ... }
+  → Returns vendor profile with approval_status: "pending"
+  → Admin now sees this vendor in "Pending Vendor Approvals"
+
+Step 4: (Optional) Upload Profile Picture & Portfolio Images
+  POST /upload/image → profile_picture path
+  POST /vendors/{vendor_id}/portfolio → upload portfolio images
+  PUT /vendors/{vendor_id} { profile_picture: "/uploads/...", ... }
+
+Step 5: Wait for Admin Approval
+  GET /auth/me → check user.approval_status and user.vendor_profile.approval_status
+  → "pending" → Show "Under Review" banner
+  → "approved" → Hide banner, grant full access
+  → "rejected" → Show rejection reason
+```
+
+---
+
+## Required Fields for `POST /vendors`
+
+### Field Details
+
+| Field | Type | Required | Validation | Description |
+| --- | --- | --- | --- | --- |
+| **business_name** | `string` | ✅ **YES** | Min 2 characters | Business/company name (e.g., "Royal Photography") |
+| **category** | `string[]` | ✅ **YES** | Min 1 item | Array of categories (e.g., `["photography", "videography"]`) |
+| **services** | `string` | ✅ **YES** | Min 10 characters | Description of services offered |
+| **city** | `string` | ✅ **YES** | \- | City name (e.g., "Karachi", "Lahore") |
+| **area** | `string` | ✅ **YES** | \- | Area/locality (e.g., "Gulshan", "DHA") |
+| **event_types** | `string[]` | ✅ **YES** | Min 1 item | Types of events (e.g., `["wedding", "engagement", "birthday"]`) |
+| **cnic_number** | `string` | ✅ **YES** | Format: `XXXXX-XXXXXXX-X` | CNIC number (e.g., `"42101-1234567-1"`) |
+| **cnic_front_image** | `string` | ✅ **YES** | Must be uploaded first | Path from `POST /upload/image` (e.g., `"/uploads/abc123.jpg"`) |
+| **cnic_back_image** | `string` | ✅ **YES** | Must be uploaded first | Path from `POST /upload/image` (e.g., `"/uploads/def456.jpg"`) |
+| **whatsapp_number** | `string` | ✅ **YES** | \- | WhatsApp number (e.g., `"+923001234567"`) |
+| **basic_package** | `object` | ❌ Optional | See Pricing Package schema | Basic pricing package |
+| **premium_package** | `object` | ❌ Optional | See Pricing Package schema | Premium pricing package |
+| **luxury_package** | `object` | ❌ Optional | See Pricing Package schema | Luxury pricing package |
+| **availability** | `string` | ❌ Optional | Default: `"active"` | `"active"` or `"inactive"` |
+
+---
+
+## Pricing Package Schema (Optional)
+
+If you want to include pricing packages during registration (or add later via `PUT /vendors/{id}`):
+
+```json
+{
+  "basic_package": {
+    "description": "Basic photography package with 4 hours coverage and 100 edited photos",
+    "base_price": 50000.0,
+    "per_head_price": 500.0
+  },
+  "premium_package": {
+    "description": "Premium package with photography, videography, and drone shots",
+    "base_price": 100000.0,
+    "per_head_price": 800.0
+  },
+  "luxury_package": {
+    "description": "Luxury complete coverage with album, drone, and extended hours",
+    "base_price": 200000.0,
+    "per_head_price": 1200.0
+  }
+}
+```
+
+**Pricing Package Fields:**
+
+- `description` (string, required, min 10 chars): What's included in this package
+- `base_price` (number, required, &gt; 0): Base price in PKR
+- `per_head_price` (number, required, &gt; 0): Additional cost per guest/person
+
+---
+
+## Complete JSON Example for `POST /vendors`
+
+```json
+{
+  "business_name": "Royal Photography",
+  "category": ["photography", "videography"],
+  "services": "Professional photography and videography services for weddings, engagements, birthdays, and corporate events. We provide high-quality images and videos with professional editing.",
+  "city": "Karachi",
+  "area": "Gulshan-e-Iqbal",
+  "event_types": ["wedding", "engagement", "birthday", "corporate"],
+  "cnic_number": "42101-1234567-1",
+  "cnic_front_image": "/uploads/cnic_front_abc123def456.jpg",
+  "cnic_back_image": "/uploads/cnic_back_xyz789ghi012.jpg",
+  "whatsapp_number": "+923001234567",
+  "basic_package": {
+    "description": "Basic photography package with 4 hours coverage, 100 edited photos, and online gallery",
+    "base_price": 50000.0,
+    "per_head_price": 500.0
+  },
+  "premium_package": {
+    "description": "Premium package with 6 hours coverage, photography + videography, 200 edited photos, drone shots, and online gallery",
+    "base_price": 100000.0,
+    "per_head_price": 800.0
+  },
+  "luxury_package": {
+    "description": "Luxury complete coverage with 8 hours, photography + videography + drone, 300+ edited photos, printed album, and online gallery",
+    "base_price": 200000.0,
+    "per_head_price": 1200.0
+  },
+  "availability": "active"
+}
+```
+
+---
+
+## Flutter Form Implementation Guide
+
+### Step 1: Create Form Fields
+
+```dart
+class VendorProfileForm {
+  // Required fields
+  String businessName = '';
+  List<String> categories = [];  // Multi-select
+  String services = '';
+  String city = '';
+  String area = '';
+  List<String> eventTypes = [];  // Multi-select
+  String cnicNumber = '';  // Format: XXXXX-XXXXXXX-X
+  String cnicFrontImagePath = '';  // From upload
+  String cnicBackImagePath = '';  // From upload
+  String whatsappNumber = '';
+  
+  // Optional pricing packages
+  PricingPackage? basicPackage;
+  PricingPackage? premiumPackage;
+  PricingPackage? luxuryPackage;
+  
+  String availability = 'active';
+}
+
+class PricingPackage {
+  String description;
+  double basePrice;
+  double perHeadPrice;
+  
+  PricingPackage({
+    required this.description,
+    required this.basePrice,
+    required this.perHeadPrice,
+  });
+  
+  Map<String, dynamic> toJson() => {
+    'description': description,
+    'base_price': basePrice,
+    'per_head_price': perHeadPrice,
+  };
+}
+```
+
+### Step 2: Upload CNIC Images First
+
+```dart
+// Upload CNIC Front
+Future<String> uploadCnicFront(File imageFile, String token) async {
+  var request = http.MultipartRequest(
+    'POST',
+    Uri.parse('$baseUrl/upload/image'),
+  );
+  
+  request.headers['Authorization'] = 'Bearer $token';
+  request.files.add(
+    await http.MultipartFile.fromPath('file', imageFile.path),
+  );
+  
+  var response = await request.send();
+  var responseData = await response.stream.bytesToString();
+  var jsonResponse = jsonDecode(responseData);
+  
+  if (response.statusCode == 200) {
+    return jsonResponse['file_path'];  // e.g., "/uploads/abc123.jpg"
+  } else {
+    throw Exception('CNIC front upload failed: ${jsonResponse['detail']}');
+  }
+}
+
+// Upload CNIC Back (same function, call twice)
+Future<String> uploadCnicBack(File imageFile, String token) async {
+  // Same as above
+}
+```
+
+### Step 3: Validate CNIC Number Format
+
+```dart
+bool isValidCnicFormat(String cnic) {
+  // Format: XXXXX-XXXXXXX-X
+  final regex = RegExp(r'^\d{5}-\d{7}-\d{1}$');
+  return regex.hasMatch(cnic);
+}
+
+// Example: "42101-1234567-1" ✅
+// Example: "4210112345671" ❌ (missing dashes)
+// Example: "4210-1234567-1" ❌ (wrong format)
+```
+
+### Step 4: Submit Vendor Profile
+
+```dart
+Future<VendorProfile> createVendorProfile(
+  VendorProfileForm form,
+  String token,
+) async {
+  // Validate required fields
+  if (form.businessName.isEmpty || form.businessName.length < 2) {
+    throw Exception('Business name must be at least 2 characters');
+  }
+  
+  if (form.categories.isEmpty) {
+    throw Exception('Select at least one category');
+  }
+  
+  if (form.services.length < 10) {
+    throw Exception('Services description must be at least 10 characters');
+  }
+  
+  if (form.eventTypes.isEmpty) {
+    throw Exception('Select at least one event type');
+  }
+  
+  if (!isValidCnicFormat(form.cnicNumber)) {
+    throw Exception('CNIC format must be XXXXX-XXXXXXX-X');
+  }
+  
+  if (form.cnicFrontImagePath.isEmpty || form.cnicBackImagePath.isEmpty) {
+    throw Exception('Please upload both CNIC images');
+  }
+  
+  // Build request body
+  Map<String, dynamic> body = {
+    'business_name': form.businessName,
+    'category': form.categories,
+    'services': form.services,
+    'city': form.city,
+    'area': form.area,
+    'event_types': form.eventTypes,
+    'cnic_number': form.cnicNumber,
+    'cnic_front_image': form.cnicFrontImagePath,
+    'cnic_back_image': form.cnicBackImagePath,
+    'whatsapp_number': form.whatsappNumber,
+    'availability': form.availability,
+  };
+  
+  // Add optional pricing packages
+  if (form.basicPackage != null) {
+    body['basic_package'] = form.basicPackage!.toJson();
+  }
+  if (form.premiumPackage != null) {
+    body['premium_package'] = form.premiumPackage!.toJson();
+  }
+  if (form.luxuryPackage != null) {
+    body['luxury_package'] = form.luxuryPackage!.toJson();
+  }
+  
+  // Send POST request
+  final response = await http.post(
+    Uri.parse('$baseUrl/vendors'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode(body),
+  );
+  
+  if (response.statusCode == 201) {
+    return VendorProfile.fromJson(jsonDecode(response.body));
+  } else {
+    var error = jsonDecode(response.body);
+    throw Exception('Failed to create profile: ${error['detail']}');
+  }
+}
+```
+
+### Step 5: Check Approval Status
+
+```dart
+Future<void> checkApprovalStatus(String token) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/auth/me'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+  
+  if (response.statusCode == 200) {
+    var userData = jsonDecode(response.body);
+    String userApprovalStatus = userData['approval_status'];  // "pending", "approved", "rejected"
+    
+    if (userData['role'] == 'vendor' && userData['vendor_profile'] != null) {
+      String vendorApprovalStatus = userData['vendor_profile']['approval_status'];
+      String? rejectionReason = userData['vendor_profile']['rejection_reason'];
+      
+      // Show appropriate UI based on status
+      if (vendorApprovalStatus == 'pending') {
+        // Show "Under Review" banner
+      } else if (vendorApprovalStatus == 'rejected') {
+        // Show rejection reason banner
+      } else if (vendorApprovalStatus == 'approved') {
+        // Hide banner, enable all features
+      }
+    }
+  }
+}
+```
+
+---
+
+## Common Categories (for dropdown/multi-select)
+
+```dart
+final List<String> availableCategories = [
+  'photography',
+  'videography',
+  'catering',
+  'decoration',
+  'makeup',
+  'dj',
+  'sound_system',
+  'lighting',
+  'venue',
+  'transportation',
+  'photobooth',
+  'entertainment',
+];
+```
+
+---
+
+## Common Event Types (for dropdown/multi-select)
+
+```dart
+final List<String> availableEventTypes = [
+  'wedding',
+  'engagement',
+  'mehndi',
+  'baraat',
+  'walima',
+  'birthday',
+  'anniversary',
+  'corporate',
+  'conference',
+  'seminar',
+  'exhibition',
+  'other',
+];
+```
+
+---
+
+## Form UI Recommendations
+
+### Screen 1: Basic Business Info
+
+- Business Name (text field)
+- Category (multi-select chips/checkboxes)
+- Services Description (text area, min 10 chars)
+- City (dropdown or text field)
+- Area (dropdown or text field)
+- Event Types (multi-select chips/checkboxes)
+
+### Screen 2: CNIC Verification
+
+- CNIC Number (text field with format hint: `XXXXX-XXXXXXX-X`)
+- CNIC Front Image (image picker + preview)
+- CNIC Back Image (image picker + preview)
+- Upload buttons that call `POST /upload/image` and store the `file_path`
+
+### Screen 3: Contact & Pricing (Optional)
+
+- WhatsApp Number (text field with country code)
+- Basic Package (expandable section with description, base_price, per_head_price)
+- Premium Package (same)
+- Luxury Package (same)
+- Availability Toggle (active/inactive)
+
+### Submit Button
+
+- Validates all required fields
+- Uploads CNIC images first (if not already uploaded)
+- Calls `POST /vendors` with all data
+- Shows success message
+- Redirects to profile page with "Pending Approval" banner
+
+---
+
+## Error Handling
+
+| Error Code | Meaning | What to Do |
+| --- | --- | --- |
+| **400** | Validation error (missing field, wrong format) | Show field-specific error message |
+| **401** | Not authenticated | Redirect to login |
+| **403** | User not approved (but this shouldn't happen for `POST /vendors` anymore) | Show approval status message |
+| **409** | Vendor profile already exists | Show "Profile already created" message, redirect to profile view |
+
+---
+
+## Important Notes
+
+1. **CNIC Format:** Must be exactly `XXXXX-XXXXXXX-X` (5 digits, dash, 7 digits, dash, 1 digit)
+2. **Image Upload:** CNIC images MUST be uploaded via `POST /upload/image` FIRST, then use the returned `file_path` in the profile creation
+3. **Pricing Packages:** Optional during registration, can be added later via `PUT /vendors/{id}`
+4. **Approval Status:** After creating profile, vendor will have `approval_status: "pending"` until admin approves
+5. **Banner Logic:** Show "Pending Approval" banner if `vendor_profile.approval_status == "pending"`, hide it when `"approved"`
+
+---
+
+## Testing Checklist
+
+- [ ] All required fields validated
+
+- [ ] CNIC format validation works
+
+- [ ] CNIC images upload successfully
+
+- [ ] Profile creation succeeds
+
+- [ ] Approval status shows as "pending" after creation
+
+- [ ] Banner shows/hides based on approval status
+
+- [ ] Pricing packages (if included) are saved correctly
+
+- [ ] Error messages display properlyR
