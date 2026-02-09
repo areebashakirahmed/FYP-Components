@@ -444,4 +444,4 @@ final List<String> availableEventTypes = [
 
 - [ ] Pricing packages (if included) are saved correctly
 
-- [ ] Error messages display properlyR
+- [ ] Error messages display properlyRR

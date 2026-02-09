@@ -301,7 +301,7 @@ class _VendorRegistrationScreenState extends State<VendorRegistrationScreen> {
       await authProvider.refreshUser();
 
       Fluttertoast.showToast(
-        msg: 'Registration submitted! Please wait for approval.',
+        msg: 'Your account has been sent for approval. Please wait for more details.',
       );
 
       // Navigate to verification pending screen

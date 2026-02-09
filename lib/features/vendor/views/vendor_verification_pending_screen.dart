@@ -98,7 +98,7 @@ class _VendorVerificationPendingScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your account is currently being reviewed.',
+                      'Your account has been sent for approval.',
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
@@ -107,7 +107,7 @@ class _VendorVerificationPendingScreenState
                     ),
                     SizedBox(height: 12.h),
                     Text(
-                      'We will notify you via email at ${widget.vendorEmail ?? 'Mehfilista@gmail.com'} once the verification process is complete.',
+                      'Please wait for more details. We will notify you via email at ${widget.vendorEmail ?? 'Mehfilista@gmail.com'} once the verification process is complete.',
                       style: TextStyle(
                         fontSize: 13.sp,
                         color: Colors.grey.shade700,
